@@ -106,6 +106,18 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
 const CURATION_CACHE = new Map();
 const MAX_CURATIONS = 20;
 
+const pushCurationToCache = (curation) => {
+  if (!curation || !curation.url) return;
+  const entry = {
+    ...curation,
+    link: curation.url,
+    score: 999,
+    source: curation.source || 'Curación manual'
+  };
+  cache.items = [entry, ...cache.items.filter((item) => item.link !== entry.link)].slice(0, 40);
+  cache.updatedAt = new Date().toISOString();
+};
+
 const CACHE_TTL = 45 * 1000;
 let refreshPromise = null;
 
@@ -259,6 +271,7 @@ const curatePage = async (targetUrl) => {
     CURATION_CACHE.delete(firstKey);
   }
   CURATION_CACHE.set(normalized, curation);
+  pushCurationToCache(curation);
 
   return curation;
 };
