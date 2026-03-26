@@ -61,11 +61,11 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
       {
         role: 'system',
         content:
-          'Eres un curador editorial. Analiza la web provista y extrae el resumen más relevante, etiquetas, puntos clave y urgencia.'
+          'Eres un curador editorial. Analiza la web provista y extrae un titular breve, el resumen más relevante, etiquetas, puntos clave y urgencia.'
       },
       {
         role: 'user',
-        content: `URL: ${url}\n\nTexto para analizar:\n${snippet}\n\nDevuelve únicamente JSON con las claves "summary" (texto en español), "highlights" (array de frases cortas), "tags" (array de palabras clave) y "urgency" ("alta", "media" o "baja").`
+        content: `URL: ${url}\n\nTexto para analizar:\n${snippet}\n\nDevuelve únicamente JSON con las claves "headline" (titular breve), "summary" (texto en español), "highlights" (array de frases cortas), "tags" (array de palabras clave) y "urgency" ("alta", "media" o "baja").`
       }
     ],
     max_output_tokens: 512,
@@ -94,6 +94,7 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
   }
 
   return {
+    headline: parsed.headline,
     summary: parsed.summary,
     highlights: parsed.highlights,
     tags: parsed.tags,
@@ -239,6 +240,10 @@ const curatePage = async (targetUrl) => {
       }
       if (grok.urgency) {
         curation.urgency = grok.urgency;
+      }
+      if (grok.headline) {
+        curation.headline = grok.headline;
+        curation.title = grok.headline;
       }
       curation.grok = grok;
     }

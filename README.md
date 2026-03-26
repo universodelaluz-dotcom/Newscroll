@@ -1,11 +1,11 @@
 # NewsScroll Ticker
 
-Barra de noticias lista para incrustar en OBS que combina varios RSS públicos y ofrece un ranking de "noticias calientes".
+Barra de noticias lista para incrustar en OBS que combina varios RSS públicos y ofrece un ranking de “noticias calientes”.
 
 ## Arquitectura
 
-- **Backend (Express + RSS Parser)**: consulta periódicamente una lista de fuentes (Reuters, El País, BBC Mundo e Infobae), normaliza los artículos y los ordena por puntaje de prioridad (recencia + palabras clave como "breaking").
-- **Cache propia**: los datos se refrescan cada minuto y se exponen en `/api/news` para minimizar el scraping en vivo.
+- **Backend (Express + RSS Parser)**: consulta periódicamente una lista de fuentes (Reuters, El País, BBC Mundo e Infobae), normaliza los artículos y los ordena por puntaje de prioridad (recencia + palabras clave como “breaking”).
+- **Cache propia**: los datos se refrescan cada minuto y se exponen en /api/news para minimizar el scraping en vivo.
 - **Frontend estático**: el scroll usa CSS `@keyframes` y reinicia la animación cada vez que llegan nuevas noticias; se puede usar como Browser Source en OBS.
 
 ## Cómo ejecutar
@@ -20,8 +20,8 @@ Barra de noticias lista para incrustar en OBS que combina varios RSS públicos y
 - **Nuevo feed**: agrega una entrada a `FEEDS` en `server.js` con `url` y `label`.
 - **Resumen ligero**: el backend corta el contenido a 220 caracteres y calcula un `score` por recencia y palabras clave. Para mejoras (sentiment, categorías), reemplaza `calculateScore`.
 - **OBS**: ajusta ancho, transparencia o velocidad modificando los estilos en `public/index.html`. Cambia `setInterval` en el script si quieres refrescar más/menos seguido (recomendado 30–60 s).
-- **Curación a demanda**: ahora existe `POST /api/curate` que acepta `{ "url": "https://..." }`, extrae título, descripciones y varios párrafos con `cheerio`, y responde con `{ curated: { title, summary, highlights, keywords } }`. Puedes usar ese endpoint o el formulario incorporado en el ticker para pedir un resumen instantáneo del sitio que el cliente pegue en vivo.
-- **Integrar Grok**: si tienes una API key de xAI, guarda `GROK_API_KEY` en una variable de entorno y úsala dentro de `curatePage` para orquestar llamadas al Agent Tools API; la función ya cachea 20 URL para no repetir solicitudes.
+- **Curación a demanda**: `POST /api/curate` extrae la página y devuelve un bloque `{ curated: {...} }`. Usa el formulario en la barra para pegar tantas URL como quieras; cada curación se muestra en el panel inferior (con urgencia y etiquetas) y se antepone al ticker principal para que veas la inteligencia editorial en vivo.
+- **Integrar Grok**: si defines `GROK_API_KEY` en el entorno, `curatePage` llama además a Grok (`grok-4-1-fast`) para pedir un JSON con headline, summary, highlights, tags y urgencia. Esa inteligencia reemplaza el título/resumen automático y el ticker exhibe los titulares más cortos/destacados directamente en la barra.
 
 ## Próximos pasos sugeridos
 

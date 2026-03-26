@@ -155,6 +155,30 @@
         margin: 0 0 0.35rem;
         color: rgba(248, 250, 252, 0.8);
       }
+      .curation-result .curation-urgency {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.1rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(248, 250, 252, 0.1);
+        color: #facc15;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+      }
+      .curation-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      .curation-tags span {
+        border-radius: 999px;
+        padding: 0.1rem 0.6rem;
+        background: rgba(248, 250, 252, 0.1);
+        font-size: 0.7rem;
+      }
       @keyframes scroll {
         from {
           transform: translateX(0);
@@ -279,10 +303,21 @@
           curationResult.innerHTML = '';
           return;
         }
-        const highlights = (curation.highlights || []).slice(0, 2);
-        curationResult.innerHTML = `<strong>${curation.title}</strong><p>${curation.summary}</p>${highlights
-          .map((item) => `<p>${item}</p>`)
-          .join('')}`;
+        const highlights = (curation.highlights || []).slice(0, 3);
+        const urgencyBadge = curation.urgency
+          ? `<span class="curation-urgency">${curation.urgency.toUpperCase()}</span>`
+          : '';
+        const tagHtml = (curation.tags || [])
+          .slice(0, 6)
+          .map((tag) => `<span>${tag}</span>`)
+          .join('');
+        curationResult.innerHTML = `
+          ${urgencyBadge}
+          <strong>${curation.title}</strong>
+          <p>${curation.summary}</p>
+          ${highlights.map((item) => `<p>${item}</p>`).join('')}
+          <div class="curation-tags">${tagHtml}</div>
+        `;
       };
 
       curationForm.addEventListener('submit', async (event) => {
