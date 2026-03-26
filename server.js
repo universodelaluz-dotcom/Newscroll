@@ -230,8 +230,7 @@ const listCurations = () =>
       source: curation.source,
       extractedAt: curation.extractedAt,
       headlines: (curation.headlines || []).slice(0, 4),
-      highlights: (curation.highlights || []).slice(0, 4)
-    ,
+      highlights: (curation.highlights || []).slice(0, 4),
       tickerItems: (curation.tickerItems || []).map((item) => ({
         title: item.title,
         link: item.link,

@@ -327,11 +327,11 @@
           </div>
           <div>
             <div class="control-label">Velocidad</div>
-            <div id="speedValue" class="speed-value">200s | 0.3 noticias/min (muy muy lento)</div>
+            <div id="speedValue" class="speed-value">220s | 0.3 noticias/min (muy muy lento)</div>
           </div>
         </div>
         <div class="control-slider">
-          <input type="range" id="speed" min="40" max="260" value="200" step="5" />
+          <input type="range" id="speed" min="60" max="320" value="220" step="5" />
         </div>
       </div>
       <div class="curation-panel">
@@ -361,8 +361,8 @@
       const curationStatus = document.getElementById('curation-status');
       const curationResult = document.getElementById('curation-result');
       const curationList = document.getElementById('curation-list');
-      const MIN_DURATION = 40;
-      const MAX_DURATION = 260;
+      const MIN_DURATION = 60;
+      const MAX_DURATION = 320;
       const BUTTON_STEP = 5;
 
       const applyDuration = (value) => {
@@ -371,7 +371,11 @@
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
         const pace = (60 / clamped).toFixed(1);
         const descriptor =
-          clamped >= 200 ? 'muy muy lento' : clamped >= 130 ? 'lento' : 'veloz';
+          clamped >= 280
+            ? 'muy muy lento'
+            : clamped >= 180
+            ? 'lento'
+            : 'veloz';
         speedValue.textContent = `${clamped}s | ${pace} noticias/min (${descriptor})`;
       };
 
