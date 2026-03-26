@@ -61,23 +61,51 @@
       }
       .control-panel {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 0.6rem;
         border-top: 1px solid rgba(255, 255, 255, 0.15);
-        padding-top: 0.5rem;
-        margin-top: 0.25rem;
+        padding-top: 0.6rem;
+        margin-top: 0.4rem;
         font-size: 0.85rem;
         letter-spacing: 0.08em;
       }
+      .speed-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .speed-controls {
+        display: inline-flex;
+        gap: 0.35rem;
+      }
+      .speed-controls button {
+        width: 40px;
+        height: 36px;
+        border-radius: 5px;
+        border: none;
+        background: rgba(250, 204, 21, 0.25);
+        color: #facc15;
+        font-size: 1.3rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .speed-controls button:focus-visible {
+        outline: 2px solid #facc15;
+      }
+      .speed-controls button:active {
+        transform: translateY(1px);
+      }
       .control-label {
         color: rgba(255, 255, 255, 0.65);
-        margin-right: 0.25rem;
+        margin: 0;
       }
       .speed-value {
         color: #a5b4fc;
+        font-weight: 600;
       }
       .control-slider input[type='range'] {
-        width: 180px;
+        width: 100%;
         accent-color: #facc15;
         cursor: ew-resize;
       }
@@ -94,22 +122,6 @@
           animation: none;
         }
       }
-      button {
-        position: absolute;
-        left: 16px;
-        top: 8px;
-        padding: 0.3rem 0.8rem;
-        border-radius: 999px;
-        border: none;
-        background: rgba(255, 255, 255, 0.15);
-        color: #fff;
-        font-size: 0.7rem;
-        letter-spacing: 0.08em;
-        cursor: pointer;
-      }
-      button:active {
-        transform: translateY(1px);
-      }
     </style>
   </head>
   <body>
@@ -119,12 +131,18 @@
       </div>
       <div class="ticker-meta" id="meta">Actualizando…</div>
       <div class="control-panel">
-        <div>
-          <span class="control-label">Velocidad</span>
-          <span id="speedValue" class="speed-value">28s (normal)</span>
+        <div class="speed-row">
+          <div class="speed-controls">
+            <button id="speedDown" aria-label="Más rápido">-</button>
+            <button id="speedUp" aria-label="Más lento">+</button>
+          </div>
+          <div>
+            <div class="control-label">Velocidad</div>
+            <div id="speedValue" class="speed-value">28s · 2.1 noticias/min</div>
+          </div>
         </div>
         <div class="control-slider">
-          <input type="range" id="speed" min="18" max="60" value="28" step="1" />
+          <input type="range" id="speed" min="12" max="80" value="28" step="1" />
         </div>
       </div>
     </div>
@@ -133,6 +151,11 @@
       const meta = document.getElementById('meta');
       const speedInput = document.getElementById('speed');
       const speedValue = document.getElementById('speedValue');
+      const speedDown = document.getElementById('speedDown');
+      const speedUp = document.getElementById('speedUp');
+      const MIN_DURATION = 12;
+      const MAX_DURATION = 80;
+      const BUTTON_STEP = 4;
 
       const buildTicker = (items) => {
         if (!items || items.length === 0) {
@@ -170,18 +193,25 @@
         }
       };
 
-      const updateSpeedDisplay = () => {
-        const duration = Number(speedInput.value);
-        ticker.style.setProperty('--scroll-duration', `${duration}s`);
-        const pace = (60 / duration).toFixed(1);
-        speedValue.textContent = `${duration}s · ${pace} noticias/min`;
+      const applyDuration = (value) => {
+        const clamped = Math.max(MIN_DURATION, Math.min(MAX_DURATION, value));
+        speedInput.value = clamped;
+        ticker.style.setProperty('--scroll-duration', `${clamped}s`);
+        const pace = (60 / clamped).toFixed(1);
+        speedValue.textContent = `${clamped}s · ${pace} noticias/min`;
       };
 
-      speedInput.addEventListener('input', updateSpeedDisplay);
-      updateSpeedDisplay();
+      const changeDuration = (delta) => {
+        applyDuration(Number(speedInput.value) + delta);
+      };
 
-     setInterval(refresh, 45000);
-     refresh();
+      speedInput.addEventListener('input', () => applyDuration(Number(speedInput.value)));
+      speedDown.addEventListener('click', () => changeDuration(-BUTTON_STEP));
+      speedUp.addEventListener('click', () => changeDuration(BUTTON_STEP));
+      applyDuration(Number(speedInput.value));
+
+      setInterval(refresh, 45000);
+      refresh();
     </script>
   </body>
 </html>
