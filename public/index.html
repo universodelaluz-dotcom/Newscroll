@@ -187,6 +187,87 @@
         flex-direction: column;
         gap: 0.45rem;
       }
+      .curation-item {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.75rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .curation-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      .curation-headlines {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      .headline-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(250, 204, 21, 0.1);
+        color: #facc15;
+        font-size: 0.72rem;
+      }
+      .headline-chip button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-size: 0.65rem;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 0.25rem;
+      }
+      .curation-item {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.75rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .curation-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      .curation-item {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.75rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .curation-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .headline-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(250, 204, 21, 0.1);
+        color: #facc15;
+        font-size: 0.72rem;
+        cursor: pointer;
+      }
+      .headline-chip button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-size: 0.65rem;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 0.25rem;
+      }
       .curation-list:empty {
         display: none;
       }
@@ -246,11 +327,11 @@
           </div>
           <div>
             <div class="control-label">Velocidad</div>
-            <div id="speedValue" class="speed-value">120s | 0.5 noticias/min (muy lento)</div>
+            <div id="speedValue" class="speed-value">200s | 0.3 noticias/min (muy muy lento)</div>
           </div>
         </div>
         <div class="control-slider">
-          <input type="range" id="speed" min="30" max="160" value="120" step="5" />
+          <input type="range" id="speed" min="40" max="260" value="200" step="5" />
         </div>
       </div>
       <div class="curation-panel">
@@ -280,8 +361,8 @@
       const curationStatus = document.getElementById('curation-status');
       const curationResult = document.getElementById('curation-result');
       const curationList = document.getElementById('curation-list');
-      const MIN_DURATION = 30;
-      const MAX_DURATION = 160;
+      const MIN_DURATION = 40;
+      const MAX_DURATION = 260;
       const BUTTON_STEP = 5;
 
       const applyDuration = (value) => {
@@ -290,7 +371,7 @@
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
         const pace = (60 / clamped).toFixed(1);
         const descriptor =
-          clamped >= 120 ? 'muy lento' : clamped <= 50 ? 'rápido' : 'equilibrado';
+          clamped >= 200 ? 'muy muy lento' : clamped >= 130 ? 'lento' : 'veloz';
         speedValue.textContent = `${clamped}s | ${pace} noticias/min (${descriptor})`;
       };
 
@@ -367,18 +448,29 @@
 
         curationList.innerHTML = items
           .map((item) => {
-            const preview = [...(item.headlines || []), ...(item.highlights || [])]
-              .filter(Boolean)
-              .slice(0, 2)
-              .join(' | ');
+            const headlineHtml = (item.tickerItems || [])
+              .map(
+                (headline) => `
+                  <span class="headline-chip">
+                    <span>${headline.title}</span>
+                    <button class="remove-headline" data-link="${headline.link}">×</button>
+                  </span>
+                `
+              )
+              .join('');
+
             return `
-              <div class="curation-list-item">
-                <div>
-                  <strong>${item.title}</strong>
-                  <p>${item.url}</p>
-                  <p>${preview || 'Titulares listos para la barra.'}</p>
+              <div class="curation-item">
+                <div class="curation-item-header">
+                  <div>
+                    <strong>${item.title}</strong>
+                    <p>${item.url}</p>
+                  </div>
+                  <button class="remove-web" data-url="${item.url}">Quitar web</button>
                 </div>
-                <button class="remove-web" data-url="${item.url}">Quitar</button>
+                <div class="curation-headlines">
+                  ${headlineHtml || '<span class="curation-status">Sin titulares disponibles.</span>'}
+                </div>
               </div>
             `;
           })
@@ -427,6 +519,36 @@
       });
 
       curationList.addEventListener('click', async (event) => {
+        const headlineButton = event.target.closest('.remove-headline');
+        if (headlineButton) {
+          const { link } = headlineButton.dataset;
+          if (!link) {
+            return;
+          }
+
+          curationStatus.textContent = 'Quitando titular...';
+          try {
+            const response = await fetch('/api/curate/headline', {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              cache: 'no-store',
+              body: JSON.stringify({ link })
+            });
+            if (!response.ok) {
+              const errorPayload = await response.json().catch(() => ({}));
+              throw new Error(errorPayload.error || 'No se pudo quitar el titular.');
+            }
+            curationStatus.textContent = 'Titular eliminado.';
+            await Promise.all([refreshCurations(), refresh()]);
+          } catch (error) {
+            console.error('No se pudo quitar el titular:', error);
+            curationStatus.textContent = `Error: ${error.message}`;
+          }
+          return;
+        }
+
         const button = event.target.closest('.remove-web');
         if (!button) {
           return;

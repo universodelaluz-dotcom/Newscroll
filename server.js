@@ -165,6 +165,7 @@ const buildCurationTickerItems = (curation) => {
     publishedAt: curation.publishedAt || curation.extractedAt || new Date().toISOString(),
     link: `${curation.url}#curation-${index}`,
     score: 999 - index,
+    sourceUrl: curation.url,
     urgency: curation.urgency,
     tags: curation.tags || []
   }));
@@ -172,7 +173,11 @@ const buildCurationTickerItems = (curation) => {
 
 const pushCurationToCache = (curation) => {
   if (!curation || !curation.url) return;
-  const nextItems = buildCurationTickerItems(curation);
+  const nextItems = buildCurationTickerItems(curation).filter((item) => {
+    return !curation.removedLinks?.includes(item.link);
+  });
+
+  curation.tickerItems = nextItems;
   curatedTickerItems = [
     ...nextItems,
     ...curatedTickerItems.filter((item) => !item.link.startsWith(`${curation.url}#curation-`))
@@ -192,6 +197,30 @@ const removeCurationFromCache = (targetUrl) => {
   return true;
 };
 
+const removeTickerItem = (link) => {
+  if (!link) return false;
+
+  let removed = false;
+  curatedTickerItems = curatedTickerItems.filter((item) => {
+    if (item.link === link) {
+      removed = true;
+      if (item.sourceUrl && CURATION_CACHE.has(item.sourceUrl)) {
+        const curation = CURATION_CACHE.get(item.sourceUrl);
+        curation.tickerItems = (curation.tickerItems || []).filter(
+          (entry) => entry.link !== link
+        );
+        curation.removedLinks = Array.from(
+          new Set([...(curation.removedLinks || []), link])
+        );
+      }
+      return false;
+    }
+    return true;
+  });
+
+  return removed;
+};
+
 const listCurations = () =>
   Array.from(CURATION_CACHE.values())
     .sort((a, b) => new Date(b.extractedAt || 0) - new Date(a.extractedAt || 0))
@@ -202,6 +231,12 @@ const listCurations = () =>
       extractedAt: curation.extractedAt,
       headlines: (curation.headlines || []).slice(0, 4),
       highlights: (curation.highlights || []).slice(0, 4)
+    ,
+      tickerItems: (curation.tickerItems || []).map((item) => ({
+        title: item.title,
+        link: item.link,
+        publishedAt: item.publishedAt
+      }))
     }));
 
 const setNoStore = (res) => {
@@ -494,6 +529,20 @@ app.delete('/api/curate', (req, res) => {
 
   if (!removeCurationFromCache(url)) {
     return res.status(400).json({ error: 'La URL no es v?lida.' });
+  }
+
+  setNoStore(res);
+  return res.json({ ok: true, items: listCurations() });
+});
+
+app.delete('/api/curate/headline', (req, res) => {
+  const { link } = req.body || {};
+  if (!link) {
+    return res.status(400).json({ error: 'Se requiere el enlace del titular.' });
+  }
+
+  if (!removeTickerItem(link)) {
+    return res.status(404).json({ error: 'El titular no existe o ya fue eliminado.' });
   }
 
   setNoStore(res);
