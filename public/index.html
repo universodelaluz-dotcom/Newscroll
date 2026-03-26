@@ -22,20 +22,22 @@
         position: relative;
         width: min(95vw, 1000px);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 999px;
-        padding: 0.5rem 1rem;
+        border-radius: 0;
+        padding: 0.6rem 0.9rem;
         overflow: hidden;
-        background: rgba(2, 6, 23, 0.85);
-        box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5);
+        background: rgba(2, 6, 23, 0.95);
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
       }
       .ticker-content {
         display: inline-flex;
         gap: 2rem;
         will-change: transform;
         white-space: nowrap;
-        animation: scroll 28s linear infinite;
+        animation: scroll var(--scroll-duration, 28s) linear infinite;
       }
-
       .ticker-content span {
         display: inline-flex;
         align-items: center;
@@ -47,9 +49,7 @@
         color: #facc15;
       }
       .ticker-meta {
-        position: absolute;
-        right: 16px;
-        bottom: 8px;
+        align-self: flex-end;
         font-size: 0.65rem;
         letter-spacing: 0.1em;
         text-transform: uppercase;
@@ -59,12 +59,34 @@
         font-weight: 600;
         color: rgba(255, 255, 255, 0.3);
       }
+      .control-panel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 0.5rem;
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+      }
+      .control-label {
+        color: rgba(255, 255, 255, 0.65);
+        margin-right: 0.25rem;
+      }
+      .speed-value {
+        color: #a5b4fc;
+      }
+      .control-slider input[type='range'] {
+        width: 180px;
+        accent-color: #facc15;
+        cursor: ew-resize;
+      }
       @keyframes scroll {
         from {
           transform: translateX(0);
         }
         to {
-          transform: translateX(-50%);
+          transform: translateX(-100%);
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -92,16 +114,25 @@
   </head>
   <body>
     <div class="ticker-wrapper">
-      <button id="refresh">Actualizar</button>
       <div class="ticker-content" id="ticker">
         <span>Cargando noticias…</span>
       </div>
       <div class="ticker-meta" id="meta">Actualizando…</div>
+      <div class="control-panel">
+        <div>
+          <span class="control-label">Velocidad</span>
+          <span id="speedValue" class="speed-value">28s (normal)</span>
+        </div>
+        <div class="control-slider">
+          <input type="range" id="speed" min="18" max="60" value="28" step="1" />
+        </div>
+      </div>
     </div>
     <script>
       const ticker = document.getElementById('ticker');
       const meta = document.getElementById('meta');
-      const refreshBtn = document.getElementById('refresh');
+      const speedInput = document.getElementById('speed');
+      const speedValue = document.getElementById('speedValue');
 
       const buildTicker = (items) => {
         if (!items || items.length === 0) {
@@ -139,9 +170,18 @@
         }
       };
 
-      refreshBtn.addEventListener('click', refresh);
-      setInterval(refresh, 45000);
-      refresh();
+      const updateSpeedDisplay = () => {
+        const duration = Number(speedInput.value);
+        ticker.style.setProperty('--scroll-duration', `${duration}s`);
+        const pace = (60 / duration).toFixed(1);
+        speedValue.textContent = `${duration}s · ${pace} noticias/min`;
+      };
+
+      speedInput.addEventListener('input', updateSpeedDisplay);
+      updateSpeedDisplay();
+
+     setInterval(refresh, 45000);
+     refresh();
     </script>
   </body>
 </html>

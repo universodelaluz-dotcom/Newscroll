@@ -13,6 +13,7 @@ Barra de noticias lista para incrustar en OBS que combina varios RSS públicos y
 1. `npm install`
 2. `npm start` (también puedes usar `PORT=8080 npm start` para otro puerto).
 3. Abre `http://localhost:3000` para ver la barra en un navegador o apunta OBS al mismo URL como *Browser Source*.
+4. La sección inferior de la barra expone un control de velocidad: mueve el slider para alargar o acortar la animación y ver el medidor de “noticias por minuto” en tiempo real.
 
 ## Personalización
 
