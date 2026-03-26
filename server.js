@@ -1,6 +1,7 @@
 const express = require('express');
 const RSSParser = require('rss-parser');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 const parser = new RSSParser({ timeout: 10000 });
 const PORT = process.env.PORT || 3000;
@@ -135,7 +136,11 @@ const ensureFreshCache = async () => {
 };
 
 app.use(cors());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.get('/api/news', async (req, res) => {
   await ensureFreshCache();
