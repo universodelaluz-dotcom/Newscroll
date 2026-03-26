@@ -33,6 +33,75 @@ const cache = {
   items: []
 };
 
+const GROK_API_KEY = process.env.GROK_API_KEY;
+
+const limitText = (text, limit = 4200) => text.length <= limit ? text : `${text.slice(0, limit)}...`;
+
+const parseGrokJson = (content) => {
+  if (!content) return null;
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch (error) {
+    console.warn('No se pudo parsear JSON de Grok', error.message);
+    return null;
+  }
+};
+
+const runGrokCurator = async ({ title, url, summary, highlights }) => {
+  if (!GROK_API_KEY) {
+    return null;
+  }
+
+  const snippet = limitText([title, summary, ...highlights].join('\n'), 4200);
+  const payload = {
+    model: 'grok-4-1-fast',
+    input: [
+      {
+        role: 'system',
+        content:
+          'Eres un curador editorial. Analiza la web provista y extrae el resumen más relevante, etiquetas, puntos clave y urgencia.'
+      },
+      {
+        role: 'user',
+        content: `URL: ${url}\n\nTexto para analizar:\n${snippet}\n\nDevuelve únicamente JSON con las claves "summary" (texto en español), "highlights" (array de frases cortas), "tags" (array de palabras clave) y "urgency" ("alta", "media" o "baja").`
+      }
+    ],
+    max_output_tokens: 512,
+    temperature: 0.3
+  };
+
+  const response = await fetch('https://api.x.ai/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GROK_API_KEY}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Grok API respondió con ${response.status}: ${body}`);
+  }
+
+  const data = await response.json();
+  const output = (data.output || []).slice(-1)[0];
+  const parsed = parseGrokJson(output?.content || '');
+  if (!parsed) {
+    return null;
+  }
+
+  return {
+    summary: parsed.summary,
+    highlights: parsed.highlights,
+    tags: parsed.tags,
+    urgency: parsed.urgency,
+    raw: output?.content || ''
+  };
+};
+
 const CURATION_CACHE = new Map();
 const MAX_CURATIONS = 20;
 
@@ -138,10 +207,10 @@ const curatePage = async (targetUrl) => {
   const paragraphs = extractParagraphs($);
   const summaryHalves = paragraphs.slice(0, 3);
   const highlights = paragraphs.slice(0, 5);
-  const summary = summaryHalves.join(' ') || description || 'No se encontró resumen automático.';
+  const baseSummary = summaryHalves.join(' ') || description || 'No se encontró resumen automático.';
   const keywords = Array.from(
     new Set(
-      summary
+      baseSummary
         .slice(0, 120)
         .split(' ')
         .map((word) => word.toLowerCase().replace(/[^a-záéíóúñü]/g, ''))
@@ -153,12 +222,29 @@ const curatePage = async (targetUrl) => {
   const curation = {
     url: normalized,
     title,
-    summary,
+    summary: baseSummary,
     highlights,
     description,
     keywords,
     extractedAt: new Date().toISOString()
   };
+
+  try {
+    const grok = await runGrokCurator({ title, url: normalized, summary: baseSummary, highlights });
+    if (grok) {
+      curation.summary = grok.summary || curation.summary;
+      curation.highlights = grok.highlights?.length ? grok.highlights : curation.highlights;
+      if (grok.tags?.length) {
+        curation.tags = grok.tags;
+      }
+      if (grok.urgency) {
+        curation.urgency = grok.urgency;
+      }
+      curation.grok = grok;
+    }
+  } catch (error) {
+    console.warn('No se pudo usar Grok para refinar la curación', error.message || error);
+  }
 
   if (CURATION_CACHE.size >= MAX_CURATIONS) {
     const firstKey = CURATION_CACHE.keys().next().value;
