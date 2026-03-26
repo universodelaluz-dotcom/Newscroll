@@ -14,7 +14,7 @@ const FEEDS = [
   },
   {
     url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ultimas-noticias/portada',
-    label: 'El Pa?s'
+    label: 'El País'
   },
   {
     url: 'https://www.elmundo.es/rss/portada.xml',
@@ -22,13 +22,41 @@ const FEEDS = [
   },
   {
     url: 'https://rss.dw.com/xml/rss-sp-all',
-    label: 'DW Espa?ol'
+    label: 'DW Español'
   },
   {
     url: 'https://www.europapress.es/rss/rss.aspx',
     label: 'Europa Press'
   }
 ];
+
+const PUBLISHER_LABELS = FEEDS.map((feed) => feed.label.toLowerCase());
+const TITLE_SEPARATORS = ['|', ' - ', ' – ', ' — ', '//', ': '];
+
+const sanitizeTitle = (title = '') => {
+  let cleaned = title.trim();
+  if (!cleaned) {
+    return cleaned;
+  }
+
+  for (const separator of TITLE_SEPARATORS) {
+    const separatorIndex = cleaned.indexOf(separator);
+    if (separatorIndex === -1) continue;
+
+    const prefix = cleaned.slice(0, separatorIndex).trim();
+    if (!prefix) {
+      continue;
+    }
+
+    const normalizedPrefix = prefix.replace(/[·•]/g, '').toLowerCase();
+    if (PUBLISHER_LABELS.includes(normalizedPrefix)) {
+      cleaned = cleaned.slice(separatorIndex + separator.length).trim();
+      break;
+    }
+  }
+
+  return cleaned || title.trim();
+};
 
 const HOT_KEYWORDS = ['breaking', 'urgent', 'exclusive', 'live', 'alert', 'breaking news'];
 
@@ -194,11 +222,12 @@ const normalizeArticle = (article, sourceLabel) => {
   const timestamp = isNaN(publishedDate.getTime()) ? Date.now() : publishedDate.getTime();
 
   return {
-    title,
+    title: sanitizeTitle(title),
     summary,
     link,
     source: sourceLabel,
-    publishedAt: new Date(timestamp).toISOString()
+    publishedAt: new Date(timestamp).toISOString(),
+    isExtracted: false
   };
 };
 

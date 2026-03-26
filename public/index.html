@@ -246,11 +246,11 @@
           </div>
           <div>
             <div class="control-label">Velocidad</div>
-            <div id="speedValue" class="speed-value">28s | 2.1 noticias/min</div>
+            <div id="speedValue" class="speed-value">120s | 0.5 noticias/min (muy lento)</div>
           </div>
         </div>
         <div class="control-slider">
-          <input type="range" id="speed" min="5" max="120" value="28" step="1" />
+          <input type="range" id="speed" min="30" max="160" value="120" step="5" />
         </div>
       </div>
       <div class="curation-panel">
@@ -280,16 +280,18 @@
       const curationStatus = document.getElementById('curation-status');
       const curationResult = document.getElementById('curation-result');
       const curationList = document.getElementById('curation-list');
-      const MIN_DURATION = 5;
-      const MAX_DURATION = 120;
-      const BUTTON_STEP = 10;
+      const MIN_DURATION = 30;
+      const MAX_DURATION = 160;
+      const BUTTON_STEP = 5;
 
       const applyDuration = (value) => {
         const clamped = Math.max(MIN_DURATION, Math.min(MAX_DURATION, value));
         speedInput.value = clamped;
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
         const pace = (60 / clamped).toFixed(1);
-        speedValue.textContent = `${clamped}s | ${pace} noticias/min`;
+        const descriptor =
+          clamped >= 120 ? 'muy lento' : clamped <= 50 ? 'rápido' : 'equilibrado';
+        speedValue.textContent = `${clamped}s | ${pace} noticias/min (${descriptor})`;
       };
 
       const changeDuration = (delta) => {
@@ -301,7 +303,7 @@
       const buildTickerItem = (item) => {
         const published = new Date(item.publishedAt || Date.now());
         const timeAgo = Math.floor((Date.now() - published) / 60000);
-        const sourceBlock = isExtractedItem(item) ? '' : `<strong>${item.source}</strong> `;
+        const sourceBlock = '';
         const pill = isExtractedItem(item) ? 'curation-pill' : '';
         return `<span class="${pill}">${sourceBlock}${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">|</span></span>`;
       };
