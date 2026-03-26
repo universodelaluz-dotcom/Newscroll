@@ -182,6 +182,41 @@
         background: rgba(248, 250, 252, 0.1);
         font-size: 0.7rem;
       }
+      .curation-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .curation-list:empty {
+        display: none;
+      }
+      .curation-list-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .curation-list-item strong {
+        display: block;
+        color: #f8fafc;
+        font-size: 0.85rem;
+        margin-bottom: 0.2rem;
+      }
+      .curation-list-item p {
+        margin: 0;
+        color: rgba(248, 250, 252, 0.65);
+        font-size: 0.72rem;
+      }
+      .remove-web {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: transparent;
+        color: #fca5a5;
+        padding: 0.3rem 0.55rem;
+        cursor: pointer;
+        font-size: 0.72rem;
+      }
       @keyframes scroll {
         from {
           transform: translateX(0);
@@ -220,7 +255,7 @@
       </div>
       <div class="curation-panel">
         <form id="curation-form">
-          <label class="control-label" for="curation-url">Agregar una web</label>
+          <label class="control-label" for="curation-url">Extraer titulares desde una web</label>
           <div class="form-row">
             <input
               id="curation-url"
@@ -228,13 +263,14 @@
               placeholder="https://ejemplo.com/noticia"
               required
             />
-            <button type="submit">Curar esta web</button>
+            <button type="submit">Extraer de web</button>
           </div>
         </form>
         <div id="curation-status" class="curation-status">
           Pega una URL y te muestro lo más destacado.
         </div>
         <div id="curation-result" class="curation-result"></div>
+        <div id="curation-list" class="curation-list"></div>
       </div>
     </div>
     <script>
@@ -248,21 +284,30 @@
       const curationUrl = document.getElementById('curation-url');
       const curationStatus = document.getElementById('curation-status');
       const curationResult = document.getElementById('curation-result');
+      const curationList = document.getElementById('curation-list');
       const MIN_DURATION = 5;
       const MAX_DURATION = 120;
       const BUTTON_STEP = 10;
-      let forcedCurations = [];
 
       const applyDuration = (value) => {
         const clamped = Math.max(MIN_DURATION, Math.min(MAX_DURATION, value));
         speedInput.value = clamped;
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
         const pace = (60 / clamped).toFixed(1);
-        speedValue.textContent = `${clamped}s · ${pace} noticias/min`;
+        speedValue.textContent = `${clamped}s ? ${pace} noticias/min`;
       };
 
       const changeDuration = (delta) => {
         applyDuration(Number(speedInput.value) + delta);
+      };
+
+      const buildTickerItem = (item) => {
+        const published = new Date(item.publishedAt || Date.now());
+        const timeAgo = Math.floor((Date.now() - published) / 60000);
+        const isExtracted = (item.source || '').includes('Curaci?n');
+        const sourceBlock = isExtracted ? '' : `<strong>${item.source}</strong> `;
+        const pill = isExtracted ? 'curation-pill' : '';
+        return `<span class="${pill}">${sourceBlock}${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">?</span></span>`;
       };
 
       const buildTicker = (items) => {
@@ -271,15 +316,7 @@
           return;
         }
 
-        const content = items
-          .map((item) => {
-            const published = new Date(item.publishedAt || Date.now());
-            const timeAgo = Math.floor((Date.now() - published) / 60000);
-            const pill = item.source?.includes('Curación') ? 'curation-pill' : '';
-            return `<span class="${pill}"><strong>${item.source}</strong> ${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">·</span></span>`;
-          })
-          .join('');
-
+        const content = items.map(buildTickerItem).join('');
         ticker.innerHTML = content + content;
         ticker.style.animation = 'none';
         void ticker.offsetWidth;
@@ -288,16 +325,16 @@
 
       const refresh = async () => {
         try {
-          const res = await fetch('/api/news');
+          const res = await fetch(`/api/news?ts=${Date.now()}`, { cache: 'no-store' });
           const payload = await res.json();
-          buildTicker([...forcedCurations, ...payload.items]);
+          buildTicker(payload.items);
           meta.textContent = `Actualizado: ${new Date(payload.updatedAt).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit'
           })}`;
         } catch (error) {
           ticker.innerHTML = '<span>Error conectando con el backend.</span>';
-          meta.textContent = 'Último intento fallido';
+          meta.textContent = '?ltimo intento fallido';
           console.error(error);
         }
       };
@@ -324,33 +361,102 @@
         `;
       };
 
+      const renderCurations = (items) => {
+        if (!items || items.length === 0) {
+          curationList.innerHTML = '';
+          return;
+        }
+
+        curationList.innerHTML = items
+          .map((item) => {
+            const preview = [...(item.headlines || []), ...(item.highlights || [])]
+              .filter(Boolean)
+              .slice(0, 2)
+              .join(' ? ');
+            return `
+              <div class="curation-list-item">
+                <div>
+                  <strong>${item.title}</strong>
+                  <p>${item.url}</p>
+                  <p>${preview || 'Titulares listos para la barra.'}</p>
+                </div>
+                <button class="remove-web" data-url="${item.url}">Quitar</button>
+              </div>
+            `;
+          })
+          .join('');
+      };
+
+      const refreshCurations = async () => {
+        try {
+          const response = await fetch(`/api/curations?ts=${Date.now()}`, { cache: 'no-store' });
+          const payload = await response.json();
+          renderCurations(payload.items || []);
+        } catch (error) {
+          console.error('No se pudo refrescar la lista de webs:', error);
+        }
+      };
+
       curationForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const url = curationUrl.value.trim();
         if (!url) {
           return;
         }
-        curationStatus.textContent = 'Curando la página…';
+        curationStatus.textContent = 'Extrayendo titulares de la web...';
         try {
           const response = await fetch('/api/curate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
+            cache: 'no-store',
             body: JSON.stringify({ url })
           });
           if (!response.ok) {
             const errorPayload = await response.json().catch(() => ({}));
-            throw new Error(errorPayload.error || 'No se pudo curar la URL.');
+            throw new Error(errorPayload.error || 'No se pudo extraer la URL.');
           }
           const { curated } = await response.json();
-          forcedCurations = [{ ...curated, source: curated.source || 'Curación manual', publishedAt: curated.extractedAt }, ...forcedCurations].slice(0, 6);
           showCuration(curated);
-          curationStatus.textContent = 'Curación lista.';
+          curationStatus.textContent = 'Web agregada a la barra.';
           curationUrl.value = '';
-          refresh();
+          await Promise.all([refreshCurations(), refresh()]);
         } catch (error) {
-          console.error('Curación fallida:', error);
+          console.error('Extracci?n fallida:', error);
+          curationStatus.textContent = `Error: ${error.message}`;
+        }
+      });
+
+      curationList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.remove-web');
+        if (!button) {
+          return;
+        }
+
+        const { url } = button.dataset;
+        if (!url) {
+          return;
+        }
+
+        curationStatus.textContent = 'Quitando web de la barra...';
+        try {
+          const response = await fetch('/api/curate', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            cache: 'no-store',
+            body: JSON.stringify({ url })
+          });
+          if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({}));
+            throw new Error(errorPayload.error || 'No se pudo quitar la web.');
+          }
+          curationStatus.textContent = 'Web quitada de la barra.';
+          await Promise.all([refreshCurations(), refresh()]);
+        } catch (error) {
+          console.error('No se pudo quitar la web:', error);
           curationStatus.textContent = `Error: ${error.message}`;
         }
       });
@@ -362,9 +468,7 @@
 
       setInterval(refresh, 45000);
       refresh();
+      refreshCurations();
     </script>
   </body>
 </html>
-
-
-

@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const RSSParser = require('rss-parser');
 const cors = require('cors');
 const cheerio = require('cheerio');
@@ -9,20 +9,24 @@ const PORT = process.env.PORT || 3000;
 
 const FEEDS = [
   {
-    url: 'https://www.reuters.com/rssFeed/topNews',
-    label: 'Reuters'
-  },
-  {
-    url: 'https://www.elmundo.es/rss/elpais/portada.xml',
-    label: 'El País'
-  },
-  {
-    url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    url: 'https://feeds.bbci.co.uk/mundo/rss.xml',
     label: 'BBC Mundo'
   },
   {
-    url: 'https://www.infobae.com/feeds/noticias.xml',
-    label: 'Infobae'
+    url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ultimas-noticias/portada',
+    label: 'El Pa?s'
+  },
+  {
+    url: 'https://www.elmundo.es/rss/portada.xml',
+    label: 'El Mundo'
+  },
+  {
+    url: 'https://rss.dw.com/xml/rss-sp-all',
+    label: 'DW Espa?ol'
+  },
+  {
+    url: 'https://www.europapress.es/rss/rss.aspx',
+    label: 'Europa Press'
   }
 ];
 
@@ -32,6 +36,8 @@ const cache = {
   updatedAt: null,
   items: []
 };
+
+let curatedTickerItems = [];
 
 const GROK_API_KEY = process.env.GROK_API_KEY;
 
@@ -61,11 +67,11 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
       {
         role: 'system',
         content:
-          'Eres un curador editorial. Analiza la web provista y extrae un titular breve, el resumen más relevante, etiquetas, puntos clave y urgencia.'
+          'Eres un curador editorial. Analiza la web provista y extrae titulares breves, el resumen mÃ¡s relevante, etiquetas, puntos clave y urgencia.'
       },
       {
         role: 'user',
-        content: `URL: ${url}\n\nTexto para analizar:\n${snippet}\n\nDevuelve únicamente JSON con las claves "headline" (titular breve), "summary" (texto en español), "highlights" (array de frases cortas), "tags" (array de palabras clave) y "urgency" ("alta", "media" o "baja").`
+        content: `URL: ${url}\n\nTexto para analizar:\n${snippet}\n\nDevuelve Ãºnicamente JSON con las claves "headline" (titular principal breve), "headlines" (array de 3 a 6 titulares breves e importantes en espaÃ±ol), "summary" (texto en espaÃ±ol), "highlights" (array de frases cortas), "tags" (array de palabras clave) y "urgency" ("alta", "media" o "baja").`
       }
     ],
     max_output_tokens: 512,
@@ -83,7 +89,7 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(`Grok API respondió con ${response.status}: ${body}`);
+    throw new Error(`Grok API respondiÃ³ con ${response.status}: ${body}`);
   }
 
   const data = await response.json();
@@ -95,6 +101,7 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
 
   return {
     headline: parsed.headline,
+    headlines: parsed.headlines,
     summary: parsed.summary,
     highlights: parsed.highlights,
     tags: parsed.tags,
@@ -104,25 +111,79 @@ const runGrokCurator = async ({ title, url, summary, highlights }) => {
 };
 
 const CURATION_CACHE = new Map();
-const MAX_CURATIONS = 20;
+const MAX_CURATIONS = 100;
+
+const buildCurationTickerItems = (curation) => {
+  if (!curation || !curation.url) {
+    return [];
+  }
+
+  const candidateTitles = [...(curation.headlines || []), ...(curation.highlights || [])]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  const includePrimaryTitle = candidateTitles.length === 0;
+
+  const titlePool = [...(includePrimaryTitle ? [curation.title] : []), ...candidateTitles]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  const uniqueTitles = [...new Set(titlePool)].slice(0, 6);
+  return uniqueTitles.map((title, index) => ({
+    title,
+    summary: curation.summary,
+    source: curation.source || 'Curaci?n manual',
+    publishedAt: curation.publishedAt || curation.extractedAt || new Date().toISOString(),
+    link: `${curation.url}#curation-${index}`,
+    score: 999 - index,
+    urgency: curation.urgency,
+    tags: curation.tags || []
+  }));
+};
 
 const pushCurationToCache = (curation) => {
   if (!curation || !curation.url) return;
-  const entry = {
-    ...curation,
-    link: curation.url,
-    score: 999,
-    source: curation.source || 'Curación manual'
-  };
-  cache.items = [entry, ...cache.items.filter((item) => item.link !== entry.link)].slice(0, 40);
-  cache.updatedAt = new Date().toISOString();
+  const nextItems = buildCurationTickerItems(curation);
+  curatedTickerItems = [
+    ...nextItems,
+    ...curatedTickerItems.filter((item) => !item.link.startsWith(`${curation.url}#curation-`))
+  ].slice(0, 120);
+};
+
+const removeCurationFromCache = (targetUrl) => {
+  const normalized = normalizeUrl(targetUrl);
+  if (!normalized) {
+    return false;
+  }
+
+  CURATION_CACHE.delete(normalized);
+  curatedTickerItems = curatedTickerItems.filter(
+    (item) => !String(item.link || '').startsWith(`${normalized}#curation-`)
+  );
+  return true;
+};
+
+const listCurations = () =>
+  Array.from(CURATION_CACHE.values())
+    .sort((a, b) => new Date(b.extractedAt || 0) - new Date(a.extractedAt || 0))
+    .map((curation) => ({
+      url: curation.url,
+      title: curation.title,
+      source: curation.source,
+      extractedAt: curation.extractedAt,
+      headlines: (curation.headlines || []).slice(0, 4),
+      highlights: (curation.highlights || []).slice(0, 4)
+    }));
+
+const setNoStore = (res) => {
+  res.set('Cache-Control', 'no-store, max-age=0');
 };
 
 const CACHE_TTL = 45 * 1000;
 let refreshPromise = null;
 
 const normalizeArticle = (article, sourceLabel) => {
-  const title = article.title?.trim() || 'Sin título';
+  const title = article.title?.trim() || 'Sin tÃ­tulo';
   const summary = (article.contentSnippet || article.summary || '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -192,7 +253,7 @@ const extractParagraphs = ($) => {
 const curatePage = async (targetUrl) => {
   const normalized = normalizeUrl(targetUrl);
   if (!normalized) {
-    throw new Error('URL inválida');
+    throw new Error('URL invÃ¡lida');
   }
 
   if (CURATION_CACHE.has(normalized)) {
@@ -207,7 +268,7 @@ const curatePage = async (targetUrl) => {
   });
 
   if (!response.ok) {
-    throw new Error(`Falló la descarga (${response.status})`);
+    throw new Error(`FallÃ³ la descarga (${response.status})`);
   }
 
   const html = await response.text();
@@ -220,13 +281,13 @@ const curatePage = async (targetUrl) => {
   const paragraphs = extractParagraphs($);
   const summaryHalves = paragraphs.slice(0, 3);
   const highlights = paragraphs.slice(0, 5);
-  const baseSummary = summaryHalves.join(' ') || description || 'No se encontró resumen automático.';
+  const baseSummary = summaryHalves.join(' ') || description || 'No se encontrÃ³ resumen automÃ¡tico.';
   const keywords = Array.from(
     new Set(
       baseSummary
         .slice(0, 120)
         .split(' ')
-        .map((word) => word.toLowerCase().replace(/[^a-záéíóúñü]/g, ''))
+        .map((word) => word.toLowerCase().replace(/[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±Ã¼]/g, ''))
         .filter((w) => w.length > 3)
         .slice(0, 10)
     )
@@ -238,9 +299,10 @@ const curatePage = async (targetUrl) => {
     title,
     summary: baseSummary,
     highlights,
+    headlines: [],
     description,
     keywords,
-    source: 'Curación manual',
+    source: 'CuraciÃ³n manual',
     publishedAt: timestamp,
     extractedAt: timestamp
   };
@@ -256,14 +318,17 @@ const curatePage = async (targetUrl) => {
       if (grok.urgency) {
         curation.urgency = grok.urgency;
       }
+      if (grok.headlines?.length) {
+        curation.headlines = grok.headlines;
+      }
       if (grok.headline) {
         curation.title = grok.headline;
       }
-      curation.source = 'Curación Grok';
+      curation.source = 'CuraciÃ³n Grok';
       curation.grok = grok;
     }
   } catch (error) {
-    console.warn('No se pudo usar Grok para refinar la curación', error.message || error);
+    console.warn('No se pudo usar Grok para refinar la curaciÃ³n', error.message || error);
   }
 
   if (CURATION_CACHE.size >= MAX_CURATIONS) {
@@ -346,18 +411,30 @@ app.get('/', (req, res) => {
 
 app.get('/api/news', async (req, res) => {
   await ensureFreshCache();
+  const items = [...curatedTickerItems, ...cache.items].slice(0, 80);
+  setNoStore(res);
   res.json({
     updatedAt: cache.updatedAt,
-    count: cache.items.length,
-    items: cache.items
+    count: items.length,
+    items
   });
 });
 
 app.get('/api/health', async (req, res) => {
   await ensureFreshCache();
+  setNoStore(res);
   res.json({
     status: 'ok',
     updatedAt: cache.updatedAt
+  });
+});
+
+
+app.get('/api/curations', (req, res) => {
+  setNoStore(res);
+  res.json({
+    count: CURATION_CACHE.size,
+    items: listCurations()
   });
 });
 
@@ -369,13 +446,28 @@ app.post('/api/curate', async (req, res) => {
 
   try {
     const curated = await curatePage(url);
+    setNoStore(res);
     return res.json({ curated });
   } catch (error) {
-    console.error('Curación fallida:', error.message || error);
+    console.error('CuraciÃ³n fallida:', error.message || error);
     return res
       .status(500)
       .json({ error: error.message || 'No se pudo curar la URL solicitada.' });
   }
+});
+
+app.delete('/api/curate', (req, res) => {
+  const { url } = req.body || {};
+  if (!url) {
+    return res.status(400).json({ error: 'Se requiere la URL a quitar.' });
+  }
+
+  if (!removeCurationFromCache(url)) {
+    return res.status(400).json({ error: 'La URL no es v?lida.' });
+  }
+
+  setNoStore(res);
+  return res.json({ ok: true, items: listCurations() });
 });
 
 if (require.main === module) {
@@ -385,3 +477,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
