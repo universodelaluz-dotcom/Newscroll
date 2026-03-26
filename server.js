@@ -1,8 +1,6 @@
 const express = require('express');
 const RSSParser = require('rss-parser');
 const cors = require('cors');
-const cron = require('node-cron');
-
 const app = express();
 const parser = new RSSParser({ timeout: 10000 });
 const PORT = process.env.PORT || 3000;
@@ -32,6 +30,9 @@ const cache = {
   updatedAt: null,
   items: []
 };
+
+const CACHE_TTL = 45 * 1000;
+let refreshPromise = null;
 
 const normalizeArticle = (article, sourceLabel) => {
   const title = article.title?.trim() || 'Sin título';
@@ -107,11 +108,32 @@ const refreshFeeds = async () => {
   cache.items = items;
   cache.updatedAt = new Date().toISOString();
 };
+const ensureFreshCache = async () => {
+  const needsRefresh =
+    !cache.updatedAt || Date.now() - new Date(cache.updatedAt).getTime() > CACHE_TTL;
+
+  if (!needsRefresh) {
+    return;
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        await refreshFeeds();
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+
+  await refreshPromise;
+};
 
 app.use(cors());
 app.use(express.static('public'));
 
-app.get('/api/news', (req, res) => {
+app.get('/api/news', async (req, res) => {
+  await ensureFreshCache();
   res.json({
     updatedAt: cache.updatedAt,
     count: cache.items.length,
@@ -119,20 +141,21 @@ app.get('/api/news', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  await ensureFreshCache();
   res.json({
     status: 'ok',
     updatedAt: cache.updatedAt
   });
 });
 
-cron.schedule('*/1 * * * *', refreshFeeds, {
-  scheduled: true
-});
+if (require.main === module) {
+  (async () => {
+    await refreshFeeds();
+    app.listen(PORT, () => {
+      console.log(`Ticker server listening on http://localhost:${PORT}`);
+    });
+  })();
+}
 
-(async () => {
-  await refreshFeeds();
-  app.listen(PORT, () => {
-    console.log(`Ticker server listening on http://localhost:${PORT}`);
-  });
-})();
+module.exports = app;
