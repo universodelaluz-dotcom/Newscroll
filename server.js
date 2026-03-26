@@ -220,6 +220,7 @@ const curatePage = async (targetUrl) => {
     )
   );
 
+  const timestamp = new Date().toISOString();
   const curation = {
     url: normalized,
     title,
@@ -227,7 +228,9 @@ const curatePage = async (targetUrl) => {
     highlights,
     description,
     keywords,
-    extractedAt: new Date().toISOString()
+    source: 'Curación manual',
+    publishedAt: timestamp,
+    extractedAt: timestamp
   };
 
   try {
@@ -242,9 +245,9 @@ const curatePage = async (targetUrl) => {
         curation.urgency = grok.urgency;
       }
       if (grok.headline) {
-        curation.headline = grok.headline;
         curation.title = grok.headline;
       }
+      curation.source = 'Curación Grok';
       curation.grok = grok;
     }
   } catch (error) {

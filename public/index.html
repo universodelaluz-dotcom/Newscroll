@@ -48,6 +48,9 @@
       .ticker-content span strong {
         color: #facc15;
       }
+      .curation-pill {
+        color: #facc15;
+      }
       .ticker-meta {
         align-self: flex-end;
         font-size: 0.65rem;
@@ -272,7 +275,8 @@
           .map((item) => {
             const published = new Date(item.publishedAt || Date.now());
             const timeAgo = Math.floor((Date.now() - published) / 60000);
-            return `<span><strong>${item.source}</strong> ${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">·</span></span>`;
+            const pill = item.source?.includes('Curación') ? 'curation-pill' : '';
+            return `<span class="${pill}"><strong>${item.source}</strong> ${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">·</span></span>`;
           })
           .join('');
 
@@ -340,7 +344,7 @@
             throw new Error(errorPayload.error || 'No se pudo curar la URL.');
           }
           const { curated } = await response.json();
-          forcedCurations = [{ ...curated, source: curated.source || 'Curación manual', publishedAt: curated.extractedAt }, ...forcedCurations].slice(0, 3);
+          forcedCurations = [{ ...curated, source: curated.source || 'Curación manual', publishedAt: curated.extractedAt }, ...forcedCurations].slice(0, 6);
           showCuration(curated);
           curationStatus.textContent = 'Curación lista.';
           curationUrl.value = '';
