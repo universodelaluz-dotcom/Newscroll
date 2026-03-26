@@ -133,6 +133,7 @@ const buildCurationTickerItems = (curation) => {
     title,
     summary: curation.summary,
     source: curation.source || 'Curaci?n manual',
+    isExtracted: true,
     publishedAt: curation.publishedAt || curation.extractedAt || new Date().toISOString(),
     link: `${curation.url}#curation-${index}`,
     score: 999 - index,

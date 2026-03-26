@@ -26,7 +26,6 @@
         padding: 0.6rem 0.9rem;
         overflow: hidden;
         background: rgba(2, 6, 23, 0.95);
-        box-shadow: none;
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
@@ -34,6 +33,7 @@
       .ticker-content {
         display: inline-flex;
         gap: 2rem;
+        width: max-content;
         will-change: transform;
         white-space: nowrap;
         animation: scroll var(--scroll-duration, 28s) linear infinite;
@@ -222,7 +222,7 @@
           transform: translateX(0);
         }
         to {
-          transform: translateX(-100%);
+          transform: translateX(-50%);
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -235,18 +235,18 @@
   <body>
     <div class="ticker-wrapper">
       <div class="ticker-content" id="ticker">
-        <span>Cargando noticias…</span>
+        <span>Cargando noticias...</span>
       </div>
-      <div class="ticker-meta" id="meta">Actualizando…</div>
+      <div class="ticker-meta" id="meta">Actualizando...</div>
       <div class="control-panel">
         <div class="speed-row">
           <div class="speed-controls">
-            <button id="speedDown" aria-label="Más rápido">-</button>
-            <button id="speedUp" aria-label="Más lento">+</button>
+            <button id="speedDown" aria-label="Mas rapido">-</button>
+            <button id="speedUp" aria-label="Mas lento">+</button>
           </div>
           <div>
             <div class="control-label">Velocidad</div>
-            <div id="speedValue" class="speed-value">28s · 2.1 noticias/min</div>
+            <div id="speedValue" class="speed-value">28s | 2.1 noticias/min</div>
           </div>
         </div>
         <div class="control-slider">
@@ -257,17 +257,12 @@
         <form id="curation-form">
           <label class="control-label" for="curation-url">Extraer titulares desde una web</label>
           <div class="form-row">
-            <input
-              id="curation-url"
-              type="url"
-              placeholder="https://ejemplo.com/noticia"
-              required
-            />
+            <input id="curation-url" type="url" placeholder="https://ejemplo.com/noticia" required />
             <button type="submit">Extraer de web</button>
           </div>
         </form>
         <div id="curation-status" class="curation-status">
-          Pega una URL y te muestro lo más destacado.
+          Pega una URL y te muestro lo mas destacado.
         </div>
         <div id="curation-result" class="curation-result"></div>
         <div id="curation-list" class="curation-list"></div>
@@ -294,20 +289,21 @@
         speedInput.value = clamped;
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
         const pace = (60 / clamped).toFixed(1);
-        speedValue.textContent = `${clamped}s ? ${pace} noticias/min`;
+        speedValue.textContent = `${clamped}s | ${pace} noticias/min`;
       };
 
       const changeDuration = (delta) => {
         applyDuration(Number(speedInput.value) + delta);
       };
 
+      const isExtractedItem = (item) => Boolean(item.isExtracted);
+
       const buildTickerItem = (item) => {
         const published = new Date(item.publishedAt || Date.now());
         const timeAgo = Math.floor((Date.now() - published) / 60000);
-        const isExtracted = (item.source || '').includes('Curaci?n');
-        const sourceBlock = isExtracted ? '' : `<strong>${item.source}</strong> `;
-        const pill = isExtracted ? 'curation-pill' : '';
-        return `<span class="${pill}">${sourceBlock}${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">?</span></span>`;
+        const sourceBlock = isExtractedItem(item) ? '' : `<strong>${item.source}</strong> `;
+        const pill = isExtractedItem(item) ? 'curation-pill' : '';
+        return `<span class="${pill}">${sourceBlock}${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">|</span></span>`;
       };
 
       const buildTicker = (items) => {
@@ -334,7 +330,7 @@
           })}`;
         } catch (error) {
           ticker.innerHTML = '<span>Error conectando con el backend.</span>';
-          meta.textContent = '?ltimo intento fallido';
+          meta.textContent = 'Ultimo intento fallido';
           console.error(error);
         }
       };
@@ -372,7 +368,7 @@
             const preview = [...(item.headlines || []), ...(item.highlights || [])]
               .filter(Boolean)
               .slice(0, 2)
-              .join(' ? ');
+              .join(' | ');
             return `
               <div class="curation-list-item">
                 <div>
@@ -423,7 +419,7 @@
           curationUrl.value = '';
           await Promise.all([refreshCurations(), refresh()]);
         } catch (error) {
-          console.error('Extracci?n fallida:', error);
+          console.error('Extraccion fallida:', error);
           curationStatus.textContent = `Error: ${error.message}`;
         }
       });
