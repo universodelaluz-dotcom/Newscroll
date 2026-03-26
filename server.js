@@ -7,7 +7,7 @@ const app = express();
 const parser = new RSSParser({ timeout: 10000 });
 const PORT = process.env.PORT || 3000;
 
-const FEEDS = [
+const DEFAULT_FEEDS = [
   {
     url: 'https://feeds.bbci.co.uk/mundo/rss.xml',
     label: 'BBC Mundo'
@@ -30,8 +30,14 @@ const FEEDS = [
   }
 ];
 
-const PUBLISHER_LABELS = FEEDS.map((feed) => feed.label.toLowerCase());
+let FEEDS = [...DEFAULT_FEEDS];
+
+let PUBLISHER_LABELS = FEEDS.map((feed) => feed.label.toLowerCase());
 const TITLE_SEPARATORS = ['|', ' - ', ' – ', ' — ', '//', ': '];
+
+const refreshPublisherLabels = () => {
+  PUBLISHER_LABELS = FEEDS.map((feed) => feed.label.toLowerCase());
+};
 
 const sanitizeTitle = (title = '') => {
   let cleaned = title.trim();
@@ -187,14 +193,19 @@ const pushCurationToCache = (curation) => {
 const removeCurationFromCache = (targetUrl) => {
   const normalized = normalizeUrl(targetUrl);
   if (!normalized) {
-    return false;
+    return null;
   }
 
-  CURATION_CACHE.delete(normalized);
+  const matchingKey = Array.from(CURATION_CACHE.keys()).find((key) => sameUrl(key, normalized));
+  if (!matchingKey) {
+    return null;
+  }
+
+  CURATION_CACHE.delete(matchingKey);
   curatedTickerItems = curatedTickerItems.filter(
-    (item) => !String(item.link || '').startsWith(`${normalized}#curation-`)
+    (item) => !String(item.link || '').startsWith(`${matchingKey}#curation-`)
   );
-  return true;
+  return matchingKey;
 };
 
 const removeTickerItem = (link) => {
@@ -221,12 +232,70 @@ const removeTickerItem = (link) => {
   return removed;
 };
 
+const updateTickerItemTitle = (link, nextTitle) => {
+  if (!link || !nextTitle) return false;
+
+  let updated = false;
+  curatedTickerItems = curatedTickerItems.map((item) => {
+    if (item.link === link) {
+      updated = true;
+      return { ...item, title: nextTitle };
+    }
+    return item;
+  });
+
+  for (const curation of CURATION_CACHE.values()) {
+    if (!curation.tickerItems?.length) continue;
+    let localUpdate = false;
+    curation.tickerItems = curation.tickerItems.map((entry) => {
+      if (entry.link === link) {
+        localUpdate = true;
+        return { ...entry, title: nextTitle };
+      }
+      return entry;
+    });
+    if (localUpdate) {
+      updated = true;
+    }
+  }
+
+  return updated;
+};
+
+const addManualTickerItem = (targetUrl, nextTitle) => {
+  const normalized = normalizeUrl(targetUrl);
+  const cleanedTitle = String(nextTitle || '').trim();
+  if (!normalized || !cleanedTitle || !CURATION_CACHE.has(normalized)) {
+    return false;
+  }
+
+  const curation = CURATION_CACHE.get(normalized);
+  const manualLink = `${normalized}#manual-${Date.now()}`;
+  const manualItem = {
+    title: cleanedTitle,
+    summary: curation.summary,
+    source: curation.source || 'Curacion manual',
+    isExtracted: true,
+    publishedAt: new Date().toISOString(),
+    link: manualLink,
+    score: 1000,
+    sourceUrl: normalized,
+    urgency: curation.urgency,
+    tags: curation.tags || []
+  };
+
+  curation.tickerItems = [manualItem, ...(curation.tickerItems || [])].slice(0, 12);
+  curatedTickerItems = [manualItem, ...curatedTickerItems.filter((item) => item.link !== manualLink)].slice(0, 120);
+  return true;
+};
+
 const listCurations = () =>
   Array.from(CURATION_CACHE.values())
     .sort((a, b) => new Date(b.extractedAt || 0) - new Date(a.extractedAt || 0))
     .map((curation) => ({
       url: curation.url,
       title: curation.title,
+      siteName: curation.siteName || curation.title,
       source: curation.source,
       extractedAt: curation.extractedAt,
       headlines: (curation.headlines || []).slice(0, 4),
@@ -245,7 +314,7 @@ const setNoStore = (res) => {
 const CACHE_TTL = 45 * 1000;
 let refreshPromise = null;
 
-const normalizeArticle = (article, sourceLabel) => {
+const normalizeArticle = (article, sourceLabel, sourceUrl) => {
   const title = article.title?.trim() || 'Sin tÃ­tulo';
   const summary = (article.contentSnippet || article.summary || '')
     .replace(/\s+/g, ' ')
@@ -260,6 +329,7 @@ const normalizeArticle = (article, sourceLabel) => {
     summary,
     link,
     source: sourceLabel,
+    feedUrl: sourceUrl || null,
     publishedAt: new Date(timestamp).toISOString(),
     isExtracted: false
   };
@@ -295,17 +365,88 @@ const normalizeUrl = (rawUrl) => {
   }
 };
 
+const sameUrl = (a, b) => {
+  if (!a || !b) return false;
+  const strip = (u) => u.replace(/\/+$/, '');
+  return strip(a) === strip(b);
+};
+
+const buildFallbackCuration = (normalizedUrl, reason = '') => {
+  const hostname = (() => {
+    try {
+      return new URL(normalizedUrl).hostname;
+    } catch (error) {
+      return normalizedUrl;
+    }
+  })();
+  const timestamp = new Date().toISOString();
+  return {
+    url: normalizedUrl,
+    title: hostname,
+    siteName: deriveSiteName(hostname, normalizedUrl),
+    summary: reason || 'No se pudo extraer el contenido automaticamente, pero la web quedo agregada.',
+    highlights: [],
+    headlines: [],
+    description: '',
+    keywords: [],
+    source: 'Curacion manual',
+    publishedAt: timestamp,
+    extractedAt: timestamp
+  };
+};
+
+const deriveSiteName = (rawTitle = '', rawUrl = '') => {
+  const title = String(rawTitle || '').trim();
+  if (title) {
+    const firstPart = title.split('|')[0].split(' - ')[0].trim();
+    if (firstPart) {
+      return firstPart;
+    }
+  }
+
+  try {
+    const hostname = new URL(rawUrl).hostname.replace(/^www\./i, '');
+    return hostname.split('.')[0] || hostname;
+  } catch (error) {
+    return rawUrl;
+  }
+};
+
+const sanitizeExtractedText = (value = '') => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) {
+    return '';
+  }
+  if (/^\.[\w-]+\s*\{.*\}$/.test(text)) {
+    return '';
+  }
+  if (/fill:\s*#|stroke:\s*#|font-family:|@media|\.cls-\d+/i.test(text)) {
+    return '';
+  }
+  if (/^[{};:#.\w\s,-]+$/.test(text) && text.includes('{')) {
+    return '';
+  }
+  return text;
+};
+
+const removeFeedArticlesFromCache = (targetUrl) => {
+  if (!cache.items?.length) {
+    return;
+  }
+  cache.items = cache.items.filter((item) => !sameUrl(item.feedUrl, targetUrl));
+};
+
 const extractParagraphs = ($) => {
   const paragraphs = [];
   $('article, body').find('h1, h2, h3, p').each((_, el) => {
-    const text = $(el).text().trim().replace(/\s+/g, ' ');
+    const text = sanitizeExtractedText($(el).text());
     if (text.length > 20) {
       paragraphs.push(text);
     }
   });
   if (paragraphs.length === 0) {
     $('p').each((_, el) => {
-      const text = $(el).text().trim().replace(/\s+/g, ' ');
+      const text = sanitizeExtractedText($(el).text());
       if (text.length > 40) {
         paragraphs.push(text);
       }
@@ -324,55 +465,66 @@ const curatePage = async (targetUrl) => {
     return CURATION_CACHE.get(normalized);
   }
 
-  const response = await fetch(normalized, {
-    headers: {
-      'User-Agent': 'NewsScroll/2.0 (+https://github.com)',
-      Accept: 'text/html'
-    }
-  });
+  let curation;
+  try {
+    const response = await fetch(normalized, {
+      headers: {
+        'User-Agent': 'NewsScroll/2.0 (+https://github.com)',
+        Accept: 'text/html'
+      }
+    });
 
-  if (!response.ok) {
-    throw new Error(`FallÃ³ la descarga (${response.status})`);
+    if (!response.ok) {
+      throw new Error(`Fallo la descarga (${response.status})`);
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const title =
+      $('meta[property="og:title"]').attr('content')?.trim() ||
+      $('title').text().trim() ||
+      normalized;
+    const description = $('meta[name="description"]').attr('content')?.trim() || '';
+    const paragraphs = extractParagraphs($);
+    const summaryHalves = paragraphs.slice(0, 3);
+    const highlights = paragraphs.slice(0, 5);
+    const baseSummary = summaryHalves.join(' ') || description || 'No se encontro resumen automatico.';
+    const keywords = Array.from(
+      new Set(
+        baseSummary
+          .slice(0, 120)
+          .split(' ')
+          .map((word) => word.toLowerCase().replace(/[^a-zA-Z0-9]/g, ''))
+          .filter((w) => w.length > 3)
+          .slice(0, 10)
+      )
+    );
+
+    const timestamp = new Date().toISOString();
+    curation = {
+      url: normalized,
+      title,
+      siteName: deriveSiteName(title, normalized),
+      summary: baseSummary,
+      highlights,
+      headlines: [],
+      description,
+      keywords,
+      source: 'Curacion manual',
+      publishedAt: timestamp,
+      extractedAt: timestamp
+    };
+  } catch (error) {
+    curation = buildFallbackCuration(normalized, error.message || 'No se pudo extraer automaticamente.');
   }
 
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const title =
-    $('meta[property="og:title"]').attr('content')?.trim() ||
-    $('title').text().trim() ||
-    normalized;
-  const description = $('meta[name="description"]').attr('content')?.trim() || '';
-  const paragraphs = extractParagraphs($);
-  const summaryHalves = paragraphs.slice(0, 3);
-  const highlights = paragraphs.slice(0, 5);
-  const baseSummary = summaryHalves.join(' ') || description || 'No se encontrÃ³ resumen automÃ¡tico.';
-  const keywords = Array.from(
-    new Set(
-      baseSummary
-        .slice(0, 120)
-        .split(' ')
-        .map((word) => word.toLowerCase().replace(/[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±Ã¼]/g, ''))
-        .filter((w) => w.length > 3)
-        .slice(0, 10)
-    )
-  );
-
-  const timestamp = new Date().toISOString();
-  const curation = {
-    url: normalized,
-    title,
-    summary: baseSummary,
-    highlights,
-    headlines: [],
-    description,
-    keywords,
-    source: 'CuraciÃ³n manual',
-    publishedAt: timestamp,
-    extractedAt: timestamp
-  };
-
   try {
-    const grok = await runGrokCurator({ title, url: normalized, summary: baseSummary, highlights });
+    const grok = await runGrokCurator({
+      title: curation.title,
+      url: normalized,
+      summary: curation.summary,
+      highlights: curation.highlights || []
+    });
     if (grok) {
       curation.summary = grok.summary || curation.summary;
       curation.highlights = grok.highlights?.length ? grok.highlights : curation.highlights;
@@ -388,11 +540,11 @@ const curatePage = async (targetUrl) => {
       if (grok.headline) {
         curation.title = grok.headline;
       }
-      curation.source = 'CuraciÃ³n Grok';
+      curation.source = 'Curacion Grok';
       curation.grok = grok;
     }
   } catch (error) {
-    console.warn('No se pudo usar Grok para refinar la curaciÃ³n', error.message || error);
+    console.warn('No se pudo usar Grok para refinar la curacion', error.message || error);
   }
 
   if (CURATION_CACHE.size >= MAX_CURATIONS) {
@@ -414,7 +566,7 @@ const refreshFeeds = async () => {
       try {
         const parsed = await parser.parseURL(feed.url);
         (parsed.items || []).forEach((item) => {
-          const normalized = normalizeArticle(item, feed.label);
+          const normalized = normalizeArticle(item, feed.label, feed.url);
           if (!normalized.link) return;
           if (articlesByLink.has(normalized.link)) {
             return;
@@ -484,6 +636,51 @@ app.get('/api/news', async (req, res) => {
   });
 });
 
+app.get('/api/feeds', (req, res) => {
+  setNoStore(res);
+  res.json({ items: FEEDS });
+});
+
+app.post('/api/feeds', (req, res) => {
+  const { url, label } = req.body || {};
+  if (!url || !label) {
+    return res.status(400).json({ error: 'Se requieren url y label' });
+  }
+  const normalized = normalizeUrl(url);
+  if (!normalized) {
+    return res.status(400).json({ error: 'URL inválida' });
+  }
+  if (FEEDS.some((feed) => feed.url === normalized)) {
+    return res.status(400).json({ error: 'La fuente ya existe' });
+  }
+  FEEDS = [{ url: normalized, label: label.trim() || normalized }, ...FEEDS];
+  refreshPublisherLabels();
+  cache.updatedAt = null; // fuerza refresco
+  setNoStore(res);
+  res.json({ items: FEEDS });
+});
+
+app.delete('/api/feeds', (req, res) => {
+  const { url } = req.body || {};
+  if (!url) {
+    return res.status(400).json({ error: 'Se requiere url' });
+  }
+  const normalized = normalizeUrl(url);
+  if (!normalized) {
+    return res.status(400).json({ error: 'URL inválida' });
+  }
+  const toRemove = FEEDS.find((feed) => feed.url === normalized || sameUrl(feed.url, normalized));
+  FEEDS = FEEDS.filter((feed) => !(feed.url === normalized || sameUrl(feed.url, normalized)));
+  if (!toRemove) {
+    return res.status(404).json({ error: 'La fuente no existe' });
+  }
+  refreshPublisherLabels();
+  removeFeedArticlesFromCache(toRemove.url);
+  cache.updatedAt = null;
+  setNoStore(res);
+  res.json({ items: FEEDS, removedLabel: toRemove.label, removedUrl: toRemove.url });
+});
+
 app.get('/api/health', async (req, res) => {
   await ensureFreshCache();
   setNoStore(res);
@@ -526,12 +723,13 @@ app.delete('/api/curate', (req, res) => {
     return res.status(400).json({ error: 'Se requiere la URL a quitar.' });
   }
 
-  if (!removeCurationFromCache(url)) {
+  const removedUrl = removeCurationFromCache(url);
+  if (!removedUrl) {
     return res.status(400).json({ error: 'La URL no es v?lida.' });
   }
 
   setNoStore(res);
-  return res.json({ ok: true, items: listCurations() });
+  return res.json({ ok: true, removedUrl, items: listCurations() });
 });
 
 app.delete('/api/curate/headline', (req, res) => {
@@ -542,6 +740,36 @@ app.delete('/api/curate/headline', (req, res) => {
 
   if (!removeTickerItem(link)) {
     return res.status(404).json({ error: 'El titular no existe o ya fue eliminado.' });
+  }
+
+  setNoStore(res);
+  return res.json({ ok: true, items: listCurations() });
+});
+
+app.patch('/api/curate/headline', (req, res) => {
+  const { link, title } = req.body || {};
+  const nextTitle = String(title || '').trim();
+  if (!link || !nextTitle) {
+    return res.status(400).json({ error: 'Se requieren link y title.' });
+  }
+
+  if (!updateTickerItemTitle(link, nextTitle)) {
+    return res.status(404).json({ error: 'El titular no existe.' });
+  }
+
+  setNoStore(res);
+  return res.json({ ok: true, items: listCurations() });
+});
+
+app.post('/api/curate/headline', (req, res) => {
+  const { url, title } = req.body || {};
+  const nextTitle = String(title || '').trim();
+  if (!url || !nextTitle) {
+    return res.status(400).json({ error: 'Se requieren url y title.' });
+  }
+
+  if (!addManualTickerItem(url, nextTitle)) {
+    return res.status(404).json({ error: 'La web no existe.' });
   }
 
   setNoStore(res);

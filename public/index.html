@@ -9,6 +9,11 @@
         font-family: "Inter", "Segoe UI", system-ui, sans-serif;
         background: #020617;
         color: #f8fafc;
+        --ticker-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+        --ticker-font-size: 0.95rem;
+        --ticker-font-weight: 400;
+        --ticker-text-color: #f8fafc;
+        --ticker-background-color: rgba(2, 6, 23, 0.95);
       }
       body {
         margin: 0;
@@ -23,40 +28,48 @@
         width: min(95vw, 1000px);
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 0;
-        padding: 0.6rem 0.9rem;
+        padding: 1.15rem 1.55rem;
         overflow: hidden;
-        background: rgba(2, 6, 23, 0.95);
+        background: var(--ticker-background-color);
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.95rem;
+        margin-top: 56px;
       }
       .ticker-content {
-        display: inline-flex;
-        gap: 2rem;
+        display: flex;
         width: max-content;
         will-change: transform;
         white-space: nowrap;
         animation: scroll var(--scroll-duration, 28s) linear infinite;
+        color: var(--ticker-text-color);
       }
-      .ticker-content span {
+      .ticker-group {
         display: inline-flex;
         align-items: center;
-        gap: 0.6rem;
-        font-size: 0.95rem;
+        gap: 2rem;
+        flex: 0 0 auto;
+      }
+      .ticker-content span {
         letter-spacing: 0.01em;
       }
       .ticker-content span strong {
         color: #facc15;
       }
+      .ticker-entry {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: var(--ticker-font-family);
+        font-size: var(--ticker-font-size);
+        font-weight: var(--ticker-font-weight);
+        letter-spacing: 0.01em;
+      }
+      .time-ago {
+        color: #a5b4fc;
+      }
       .curation-pill {
         color: #facc15;
-      }
-      .ticker-meta {
-        align-self: flex-end;
-        font-size: 0.65rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.6);
       }
       .sep {
         font-weight: 600;
@@ -71,11 +84,19 @@
         font-size: 0.85rem;
         letter-spacing: 0.08em;
       }
+      .control-top {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.8rem;
+        flex-wrap: wrap;
+      }
       .speed-row {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.2rem;
+        flex-wrap: wrap;
+        flex: 0 0 auto;
       }
       .speed-controls {
         display: inline-flex;
@@ -98,18 +119,169 @@
       .speed-controls button:active {
         transform: translateY(1px);
       }
-      .control-label {
+      .speed-number-block {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .speed-number-block input[type='number'] {
+        width: 110px;
+        padding: 0.45rem 0.55rem;
+        border: 1px solid rgba(250, 204, 21, 0.45);
+        background: rgba(255, 255, 255, 0.05);
+        color: #f8fafc;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .speed-number-block span {
         color: rgba(255, 255, 255, 0.65);
-        margin: 0;
       }
-      .speed-value {
-        color: #a5b4fc;
-        font-weight: 600;
+      .text-style-panel {
+        flex: 1 1 520px;
+        min-width: 320px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 0.65rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
       }
-      .control-slider input[type='range'] {
+      .panel-title {
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.68);
+      }
+      .style-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        gap: 0.55rem;
+      }
+      .style-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .style-field label,
+      .style-toggle {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .style-field select,
+      .style-field input[type='number'],
+      .style-field input[type='color'] {
         width: 100%;
+        min-height: 38px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 0.45rem 0.55rem;
+        box-sizing: border-box;
+      }
+      .style-field select option {
+        background: #0f172a;
+        color: #f8fafc;
+      }
+      .style-field input[type='color'] {
+        padding: 0.2rem;
+        cursor: pointer;
+      }
+      .style-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 38px;
+      }
+      .style-toggle input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
         accent-color: #facc15;
-        cursor: ew-resize;
+      }
+      .control-label {
+        color: rgba(255, 255, 255, 0.68);
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .dismiss-panel {
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 0.6rem;
+      }
+      .dismiss-list {
+        margin-top: 0.4rem;
+        padding-left: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        max-height: 420px;
+        overflow-y: auto;
+      }
+      .dismiss-list li {
+        list-style: none;
+      }
+      .dismiss-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        padding: 0.35rem 0.6rem;
+        color: inherit;
+        font-size: 0.78rem;
+        cursor: pointer;
+        text-align: left;
+      }
+      .dismiss-list-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dismiss-content {
+        flex: 1;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .dismiss-edit-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid rgba(250, 204, 21, 0.45);
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        border-radius: 6px;
+      }
+      .dismiss-number {
+        width: 1.3rem;
+        display: inline-flex;
+        justify-content: flex-end;
+        margin-right: 0.25rem;
+        color: #a5b4fc;
+      }
+      .dismiss-cross {
+        width: 1.4rem;
+        height: 1.4rem;
+        border-radius: 50%;
+        border: 1px solid rgba(248, 113, 113, 0.6);
+        background: rgba(248, 113, 113, 0.12);
+        color: #fecdd3;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dismiss-edit-btn {
+        border-color: rgba(250, 204, 21, 0.45);
+        background: rgba(250, 204, 21, 0.12);
+        color: #fde68a;
+      }
+      .dismiss-edit-btn:hover {
+        background: rgba(250, 204, 21, 0.24);
       }
       .curation-panel {
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -186,6 +358,9 @@
         display: flex;
         flex-direction: column;
         gap: 0.45rem;
+        max-height: 480px;
+        overflow-y: auto;
+        padding-right: 0.25rem;
       }
       .curation-item {
         border: 1px solid rgba(255, 255, 255, 0.12);
@@ -196,114 +371,147 @@
       .curation-item-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 0.75rem;
       }
       .curation-headlines {
         margin-top: 0.5rem;
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem;
+        flex-direction: column;
+        gap: 0.4rem;
       }
-      .headline-chip {
-        display: inline-flex;
+      .headline-row {
+        display: flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.25rem 0.7rem;
-        border-radius: 999px;
-        background: rgba(250, 204, 21, 0.1);
-        color: #facc15;
-        font-size: 0.72rem;
-      }
-      .headline-chip button {
-        border: none;
-        background: transparent;
-        color: inherit;
-        font-size: 0.65rem;
-        cursor: pointer;
-        padding: 0;
-        margin-left: 0.25rem;
-      }
-      .curation-item {
+        justify-content: space-between;
+        gap: 0.6rem;
+        padding: 0.45rem 0.65rem;
         border: 1px solid rgba(255, 255, 255, 0.12);
-        padding: 0.75rem;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .curation-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.75rem;
-      }
-      .curation-item {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        padding: 0.75rem;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .curation-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.75rem;
-      }
-      .headline-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.25rem 0.7rem;
-        border-radius: 999px;
-        background: rgba(250, 204, 21, 0.1);
-        color: #facc15;
-        font-size: 0.72rem;
-        cursor: pointer;
-      }
-      .headline-chip button {
-        border: none;
-        background: transparent;
-        color: inherit;
-        font-size: 0.65rem;
-        cursor: pointer;
-        padding: 0;
-        margin-left: 0.25rem;
-      }
-      .curation-list:empty {
-        display: none;
-      }
-      .curation-list-item {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .curation-list-item strong {
-        display: block;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
         color: #f8fafc;
-        font-size: 0.85rem;
-        margin-bottom: 0.2rem;
+        font-size: 0.78rem;
       }
-      .curation-list-item p {
-        margin: 0;
-        color: rgba(248, 250, 252, 0.65);
-        font-size: 0.72rem;
+      .headline-row span {
+        flex: 1;
+      }
+      .headline-text {
+        flex: 1;
+      }
+      .headline-edit-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.4rem 0.55rem;
+        border: 1px solid rgba(250, 204, 21, 0.45);
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        border-radius: 6px;
+      }
+      .headline-row button {
+        width: 1.4rem;
+        height: 1.4rem;
+        border-radius: 50%;
+        border: 1px solid rgba(248, 250, 252, 0.4);
+        background: rgba(248, 113, 113, 0.12);
+        color: #fecdd3;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .headline-row button:hover {
+        background: rgba(248, 113, 113, 0.25);
+      }
+      .headline-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex: 0 0 auto;
+      }
+      .edit-headline {
+        border-color: rgba(250, 204, 21, 0.45);
+        background: rgba(250, 204, 21, 0.12);
+        color: #fde68a;
+      }
+      .edit-headline:hover {
+        background: rgba(250, 204, 21, 0.24);
+      }
+      .save-headline {
+        border-color: rgba(74, 222, 128, 0.45);
+        background: rgba(74, 222, 128, 0.12);
+        color: #bbf7d0;
+      }
+      .save-headline:hover {
+        background: rgba(74, 222, 128, 0.24);
+      }
+      .cancel-headline {
+        border-color: rgba(148, 163, 184, 0.45);
+        background: rgba(148, 163, 184, 0.12);
+        color: #cbd5e1;
+      }
+      .cancel-headline:hover {
+        background: rgba(148, 163, 184, 0.24);
+      }
+      .add-headline-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.35rem;
+      }
+      .add-headline-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.4rem 0.55rem;
+        border: 1px solid rgba(250, 204, 21, 0.35);
+        background: rgba(255, 255, 255, 0.05);
+        color: inherit;
+        border-radius: 6px;
+      }
+      .add-headline-btn {
+        width: 1.8rem;
+        height: 1.8rem;
+        border-radius: 50%;
+        border: 1px solid rgba(250, 204, 21, 0.45);
+        background: rgba(250, 204, 21, 0.12);
+        color: #fde68a;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .add-headline-btn:hover {
+        background: rgba(250, 204, 21, 0.24);
       }
       .remove-web {
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: transparent;
-        color: #fca5a5;
-        padding: 0.3rem 0.55rem;
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 50%;
+        border: 1px solid rgba(248, 113, 113, 0.6);
+        background: rgba(248, 113, 113, 0.12);
+        color: #fecdd3;
+        font-size: 1.25rem;
+        font-weight: 700;
         cursor: pointer;
-        font-size: 0.72rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        flex: 0 0 auto;
+      }
+      .remove-web:hover {
+        background: rgba(248, 113, 113, 0.25);
       }
       @keyframes scroll {
         from {
           transform: translateX(0);
         }
         to {
-          transform: translateX(-50%);
+          transform: translateX(calc(-1 * var(--scroll-distance, 50%)));
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -318,32 +526,59 @@
       <div class="ticker-content" id="ticker">
         <span>Cargando noticias...</span>
       </div>
-      <div class="ticker-meta" id="meta">Actualizando...</div>
       <div class="control-panel">
-        <div class="speed-row">
-          <div class="speed-controls">
-            <button id="speedDown" aria-label="Mas rapido">-</button>
-            <button id="speedUp" aria-label="Mas lento">+</button>
+        <div class="control-top">
+          <div class="speed-row">
+            <div class="speed-controls">
+              <button id="speedDown" aria-label="Mas rapido">-</button>
+              <button id="speedUp" aria-label="Mas lento">+</button>
+            </div>
+            <div class="speed-number-block">
+              <input type="number" id="speed" min="20" max="2400" value="360" step="20" />
+              <span>seg</span>
+            </div>
           </div>
-          <div>
-            <div class="control-label">Velocidad</div>
-            <div id="speedValue" class="speed-value">220s | 0.3 noticias/min (muy muy lento)</div>
+          <div class="text-style-panel">
+            <div class="panel-title">Editor de texto</div>
+            <div class="style-grid">
+              <div class="style-field">
+                <label for="fontFamily">Tipografia</label>
+                <select id="fontFamily"></select>
+              </div>
+              <div class="style-field">
+                <label for="fontSize">Tamano</label>
+                <input id="fontSize" type="number" min="12" max="96" step="1" value="15" />
+              </div>
+              <label class="style-toggle" for="fontBold">
+                <input id="fontBold" type="checkbox" />
+                <span>Negrita</span>
+              </label>
+              <div class="style-field">
+                <label for="textColor">Color letra</label>
+                <input id="textColor" type="color" value="#f8fafc" />
+              </div>
+              <div class="style-field">
+                <label for="backgroundColor">Color fondo</label>
+                <input id="backgroundColor" type="color" value="#020617" />
+              </div>
+            </div>
           </div>
         </div>
-        <div class="control-slider">
-          <input type="range" id="speed" min="60" max="320" value="220" step="5" />
+        <div class="dismiss-panel">
+          <div class="control-label">Titulares visibles</div>
+          <ol id="dismiss-list" class="dismiss-list"></ol>
         </div>
       </div>
       <div class="curation-panel">
         <form id="curation-form">
-          <label class="control-label" for="curation-url">Extraer titulares desde una web</label>
+          <label class="control-label" for="curation-url">Webs editables</label>
           <div class="form-row">
             <input id="curation-url" type="url" placeholder="https://ejemplo.com/noticia" required />
-            <button type="submit">Extraer de web</button>
+            <button type="submit">Agregar web</button>
           </div>
         </form>
         <div id="curation-status" class="curation-status">
-          Pega una URL y te muestro lo mas destacado.
+          Agrega todas las webs que quieras y quitalas una por una desde aqui.
         </div>
         <div id="curation-result" class="curation-result"></div>
         <div id="curation-list" class="curation-list"></div>
@@ -351,32 +586,284 @@
     </div>
     <script>
       const ticker = document.getElementById('ticker');
-      const meta = document.getElementById('meta');
       const speedInput = document.getElementById('speed');
-      const speedValue = document.getElementById('speedValue');
       const speedDown = document.getElementById('speedDown');
       const speedUp = document.getElementById('speedUp');
+      const fontFamilyInput = document.getElementById('fontFamily');
+      const fontSizeInput = document.getElementById('fontSize');
+      const fontBoldInput = document.getElementById('fontBold');
+      const textColorInput = document.getElementById('textColor');
+      const backgroundColorInput = document.getElementById('backgroundColor');
       const curationForm = document.getElementById('curation-form');
       const curationUrl = document.getElementById('curation-url');
       const curationStatus = document.getElementById('curation-status');
       const curationResult = document.getElementById('curation-result');
       const curationList = document.getElementById('curation-list');
-      const MIN_DURATION = 60;
-      const MAX_DURATION = 320;
-      const BUTTON_STEP = 5;
+      const dismissList = document.getElementById('dismiss-list');
+      const MIN_DURATION = 20;
+      const MAX_DURATION = 2400;
+      const BUTTON_STEP = 20;
+      const TICKER_DISMISSED_KEY = 'newsScroll.dismissedItems';
+      const TICKER_TITLE_OVERRIDES_KEY = 'newsScroll.titleOverrides';
+      const TICKER_STYLE_KEY = 'newsScroll.textStyle';
+      const FONT_OPTIONS = [
+        { id: 'inter', label: 'Inter', family: '"Inter", "Segoe UI", system-ui, sans-serif' },
+        { id: 'arial', label: 'Arial', family: 'Arial, Helvetica, sans-serif' },
+        { id: 'verdana', label: 'Verdana', family: 'Verdana, Geneva, sans-serif' },
+        { id: 'tahoma', label: 'Tahoma', family: 'Tahoma, Geneva, sans-serif' },
+        { id: 'trebuchet', label: 'Trebuchet MS', family: '"Trebuchet MS", sans-serif' },
+        { id: 'georgia', label: 'Georgia', family: 'Georgia, serif' },
+        { id: 'times', label: 'Times New Roman', family: '"Times New Roman", Times, serif' },
+        { id: 'garamond', label: 'Garamond', family: 'Garamond, serif' },
+        { id: 'palatino', label: 'Palatino', family: '"Palatino Linotype", "Book Antiqua", Palatino, serif' },
+        { id: 'bookman', label: 'Bookman', family: '"Bookman Old Style", serif' },
+        { id: 'courier', label: 'Courier New', family: '"Courier New", Courier, monospace' },
+        { id: 'consolas', label: 'Consolas', family: 'Consolas, "Courier New", monospace' },
+        { id: 'lucida-console', label: 'Lucida Console', family: '"Lucida Console", Monaco, monospace' },
+        { id: 'impact', label: 'Impact', family: 'Impact, Haettenschweiler, sans-serif' },
+        { id: 'franklin', label: 'Franklin Gothic', family: '"Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif' },
+        { id: 'century', label: 'Century Gothic', family: '"Century Gothic", CenturyGothic, AppleGothic, sans-serif' },
+        { id: 'candara', label: 'Candara', family: 'Candara, Calibri, Segoe, sans-serif' },
+        { id: 'cambria', label: 'Cambria', family: 'Cambria, Georgia, serif' },
+        { id: 'didot', label: 'Didot', family: 'Didot, "Bodoni MT", "Times New Roman", serif' },
+        { id: 'rockwell', label: 'Rockwell', family: 'Rockwell, "Courier Bold", Courier, Georgia, serif' }
+      ];
+      const DEFAULT_TICKER_STYLE = {
+        fontFamily: 'inter',
+        fontSize: 15,
+        fontBold: false,
+        textColor: '#f8fafc',
+        backgroundColor: '#020617'
+      };
+
+      const loadDismissedItems = () => {
+        if (typeof localStorage === 'undefined') {
+          return new Set();
+        }
+        try {
+          const stored = localStorage.getItem(TICKER_DISMISSED_KEY);
+          if (!stored) {
+            return new Set();
+          }
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return new Set(parsed);
+          }
+        } catch (error) {
+          console.warn('No se pudo cargar los descartes del ticker:', error.message || error);
+        }
+        return new Set();
+      };
+
+      const saveDismissedItems = (set) => {
+        if (typeof localStorage === 'undefined') {
+          return;
+        }
+        try {
+          localStorage.setItem(TICKER_DISMISSED_KEY, JSON.stringify([...set]));
+        } catch (error) {
+          console.warn('No se pudo guardar los descartes del ticker:', error.message || error);
+        }
+      };
+
+      const loadTitleOverrides = () => {
+        if (typeof localStorage === 'undefined') {
+          return {};
+        }
+        try {
+          const stored = localStorage.getItem(TICKER_TITLE_OVERRIDES_KEY);
+          const parsed = stored ? JSON.parse(stored) : {};
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          console.warn('No se pudo cargar los titulos editados:', error.message || error);
+          return {};
+        }
+      };
+
+      const saveTitleOverrides = (overrides) => {
+        if (typeof localStorage === 'undefined') {
+          return;
+        }
+        try {
+          localStorage.setItem(TICKER_TITLE_OVERRIDES_KEY, JSON.stringify(overrides));
+        } catch (error) {
+          console.warn('No se pudo guardar los titulos editados:', error.message || error);
+        }
+      };
+
+      const loadTickerStyle = () => {
+        if (typeof localStorage === 'undefined') {
+          return { ...DEFAULT_TICKER_STYLE };
+        }
+        try {
+          const stored = localStorage.getItem(TICKER_STYLE_KEY);
+          const parsed = stored ? JSON.parse(stored) : {};
+          return {
+            ...DEFAULT_TICKER_STYLE,
+            ...(parsed && typeof parsed === 'object' ? parsed : {})
+          };
+        } catch (error) {
+          console.warn('No se pudo cargar el estilo del ticker:', error.message || error);
+          return { ...DEFAULT_TICKER_STYLE };
+        }
+      };
+
+      const saveTickerStyle = (style) => {
+        if (typeof localStorage === 'undefined') {
+          return;
+        }
+        try {
+          localStorage.setItem(TICKER_STYLE_KEY, JSON.stringify(style));
+        } catch (error) {
+          console.warn('No se pudo guardar el estilo del ticker:', error.message || error);
+        }
+      };
+
+      const getTickerItemKey = (item) => {
+        const parts = [
+          item.link || '',
+          item.title || '',
+          item.publishedAt || ''
+        ].map((part) => String(part || '').trim());
+        return parts.join('|');
+      };
+
+      const encodeDismissId = (value) => encodeURIComponent(String(value || ''));
+      const decodeDismissId = (value) => {
+        if (!value) {
+          return '';
+        }
+        try {
+          return decodeURIComponent(value);
+        } catch (error) {
+          return value;
+        }
+      };
+      const encodeDatasetValue = (value) => encodeURIComponent(String(value || ''));
+      const decodeDatasetValue = (value) => {
+        if (!value) {
+          return '';
+        }
+        try {
+          return decodeURIComponent(value);
+        } catch (error) {
+          return value;
+        }
+      };
+      const escapeHtml = (value) =>
+        String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      const sameUrl = (a, b) => {
+        if (!a || !b) {
+          return false;
+        }
+        return String(a).replace(/\/+$/, '') === String(b).replace(/\/+$/, '');
+      };
+      let dismissedItems = loadDismissedItems();
+      let titleOverrides = loadTitleOverrides();
+      let latestNewsItems = [];
+      let curationsState = [];
+      let curationsMutationVersion = 0;
+      let editingHeadlineLink = '';
+      let editingHeadlineDraft = '';
+      let editingDismissId = '';
+      let editingDismissDraft = '';
+      let addingHeadlineUrl = '';
+      let addingHeadlineDraft = '';
+      let lastTickerSignature = '';
+      let tickerStyle = loadTickerStyle();
+
+      const populateFontOptions = () => {
+        if (!fontFamilyInput) {
+          return;
+        }
+        fontFamilyInput.innerHTML = FONT_OPTIONS.map(
+          (option) => `<option value="${option.id}">${option.label}</option>`
+        ).join('');
+      };
+
+      const applyTickerStyle = () => {
+        const selectedFont =
+          FONT_OPTIONS.find((option) => option.id === tickerStyle.fontFamily) || FONT_OPTIONS[0];
+        document.documentElement.style.setProperty('--ticker-font-family', selectedFont.family);
+        document.documentElement.style.setProperty(
+          '--ticker-font-size',
+          `${Math.max(12, Math.min(96, Number(tickerStyle.fontSize) || DEFAULT_TICKER_STYLE.fontSize))}px`
+        );
+        document.documentElement.style.setProperty(
+          '--ticker-font-weight',
+          tickerStyle.fontBold ? '700' : '400'
+        );
+        document.documentElement.style.setProperty(
+          '--ticker-text-color',
+          tickerStyle.textColor || DEFAULT_TICKER_STYLE.textColor
+        );
+        document.documentElement.style.setProperty(
+          '--ticker-background-color',
+          tickerStyle.backgroundColor || DEFAULT_TICKER_STYLE.backgroundColor
+        );
+
+        if (fontFamilyInput) {
+          fontFamilyInput.value = selectedFont.id;
+        }
+        if (fontSizeInput) {
+          fontSizeInput.value = String(
+            Math.max(12, Math.min(96, Number(tickerStyle.fontSize) || DEFAULT_TICKER_STYLE.fontSize))
+          );
+        }
+        if (fontBoldInput) {
+          fontBoldInput.checked = Boolean(tickerStyle.fontBold);
+        }
+        if (textColorInput) {
+          textColorInput.value = tickerStyle.textColor || DEFAULT_TICKER_STYLE.textColor;
+        }
+        if (backgroundColorInput) {
+          backgroundColorInput.value = tickerStyle.backgroundColor || DEFAULT_TICKER_STYLE.backgroundColor;
+        }
+
+        const firstGroup = ticker.querySelector('.ticker-group');
+        const scrollDistance = firstGroup?.scrollWidth || 0;
+        ticker.style.setProperty('--scroll-distance', `${scrollDistance}px`);
+      };
+
+      const updateTickerStyle = (nextStyle) => {
+        tickerStyle = {
+          ...tickerStyle,
+          ...nextStyle
+        };
+        applyTickerStyle();
+        saveTickerStyle(tickerStyle);
+      };
+
+      const normalizeCurationItem = (item) => ({
+        url: item.url,
+        title: item.title,
+        siteName: item.siteName || item.title,
+        source: item.source,
+        extractedAt: item.extractedAt || item.publishedAt || new Date().toISOString(),
+        headlines: item.headlines || [],
+        highlights: item.highlights || [],
+        tickerItems: (item.tickerItems || []).map((entry) => ({
+          title: entry.title,
+          link: entry.link,
+          publishedAt: entry.publishedAt
+        }))
+      });
+
+      const applyTitleOverride = (item) => {
+        const key = getTickerItemKey(item);
+        const overriddenTitle = titleOverrides[key];
+        return overriddenTitle ? { ...item, title: overriddenTitle } : item;
+      };
 
       const applyDuration = (value) => {
         const clamped = Math.max(MIN_DURATION, Math.min(MAX_DURATION, value));
         speedInput.value = clamped;
         ticker.style.setProperty('--scroll-duration', `${clamped}s`);
-        const pace = (60 / clamped).toFixed(1);
-        const descriptor =
-          clamped >= 280
-            ? 'muy muy lento'
-            : clamped >= 180
-            ? 'lento'
-            : 'veloz';
-        speedValue.textContent = `${clamped}s | ${pace} noticias/min (${descriptor})`;
       };
 
       const changeDuration = (delta) => {
@@ -385,22 +872,126 @@
 
       const isExtractedItem = (item) => Boolean(item.isExtracted);
 
-      const buildTickerItem = (item) => {
-        const published = new Date(item.publishedAt || Date.now());
-        const timeAgo = Math.floor((Date.now() - published) / 60000);
+      const buildTickerItem = (item, key) => {
         const sourceBlock = '';
         const pill = isExtractedItem(item) ? 'curation-pill' : '';
-        return `<span class="${pill}">${sourceBlock}${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">|</span></span>`;
+        const safeTitle = escapeHtml(item.title);
+        return `
+          <span class="ticker-entry ${pill}">
+            ${sourceBlock}${safeTitle}
+            <span class="sep">|</span>
+          </span>
+        `;
+      };
+
+      const toggleDismissed = (id) => {
+        const normalizedId = decodeDismissId(id);
+        if (!normalizedId) {
+          return;
+        }
+        if (dismissedItems.has(normalizedId)) {
+          dismissedItems.delete(normalizedId);
+        } else {
+          dismissedItems.add(normalizedId);
+        }
+        saveDismissedItems(dismissedItems);
+        buildTicker(latestNewsItems);
+      };
+
+      const renderDismissList = (prepared) => {
+        if (!dismissList) {
+          return;
+        }
+        if (!prepared.length) {
+          dismissList.innerHTML = '<span class="curation-status">Aún no hay titulares visibles. Espera la próxima actualización.</span>';
+          return;
+        }
+
+        dismissList.innerHTML = prepared
+          .map(({ item, key }, index) => {
+            const isEditing = editingDismissId === key;
+            if (isEditing) {
+              return `
+                <li>
+                  <div class="dismiss-list-item">
+                    <span class="dismiss-number">${index + 1}.</span>
+                    <input
+                      type="text"
+                      class="dismiss-edit-input"
+                      value="${escapeHtml(editingDismissDraft || item.title)}"
+                      data-dismiss-id="${encodeDismissId(key)}"
+                    />
+                    <span class="headline-actions">
+                      <button type="button" class="save-dismiss-edit" data-dismiss-id="${encodeDismissId(key)}" data-link="${encodeDatasetValue(item.link || '')}" data-is-extracted="${item.isExtracted ? 'true' : 'false'}">✓</button>
+                      <button type="button" class="cancel-dismiss-edit">•</button>
+                    </span>
+                  </div>
+                </li>
+              `;
+            }
+
+            return `
+              <li>
+                <button
+                  type="button"
+                  class="dismiss-list-item"
+                  data-dismiss-id="${encodeDismissId(key)}"
+                  data-link="${encodeDatasetValue(item.link || '')}"
+                  data-source-url="${encodeDatasetValue(item.sourceUrl || '')}"
+                  data-is-extracted="${item.isExtracted ? 'true' : 'false'}"
+                >
+                  <span class="dismiss-number">${index + 1}.</span>
+                  <span class="dismiss-content">${escapeHtml(item.title)}</span>
+                  <span class="dismiss-cross dismiss-edit-btn" aria-hidden="true">✎</span>
+                </button>
+              </li>
+            `;
+          })
+          .join('');
       };
 
       const buildTicker = (items) => {
-        if (!items || items.length === 0) {
+        latestNewsItems = (items || []).map(applyTitleOverride);
+        if (!latestNewsItems.length) {
+          lastTickerSignature = '';
+          renderDismissList([]);
           ticker.innerHTML = '<span>No hay noticias disponibles.</span>';
           return;
         }
 
-        const content = items.map(buildTickerItem).join('');
-        ticker.innerHTML = content + content;
+        const prepared = latestNewsItems
+          .map((item) => ({
+            item,
+            key: getTickerItemKey(item)
+          }))
+          .filter(({ key }) => !dismissedItems.has(key));
+
+        renderDismissList(prepared);
+
+        if (!prepared.length) {
+          lastTickerSignature = '';
+          ticker.innerHTML =
+            '<span>Todos los titulares visibles fueron descartados. Recarga para volver a verlos.</span>';
+          return;
+        }
+
+        const content = prepared.map(({ item, key }) => buildTickerItem(item, key)).join('');
+        const signature = prepared
+          .map(({ item, key }) => `${key}::${item.title}`)
+          .join('||');
+
+        if (signature === lastTickerSignature) {
+          return;
+        }
+
+        lastTickerSignature = signature;
+        ticker.innerHTML = `
+          <div class="ticker-group" aria-hidden="false">${content}</div>
+          <div class="ticker-group" aria-hidden="true">${content}</div>
+        `;
+        const firstGroup = ticker.querySelector('.ticker-group');
+        const scrollDistance = firstGroup?.scrollWidth || 0;
+        ticker.style.setProperty('--scroll-distance', `${scrollDistance}px`);
         ticker.style.animation = 'none';
         void ticker.offsetWidth;
         ticker.style.animation = '';
@@ -411,13 +1002,8 @@
           const res = await fetch(`/api/news?ts=${Date.now()}`, { cache: 'no-store' });
           const payload = await res.json();
           buildTicker(payload.items);
-          meta.textContent = `Actualizado: ${new Date(payload.updatedAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}`;
         } catch (error) {
           ticker.innerHTML = '<span>Error conectando con el backend.</span>';
-          meta.textContent = 'Ultimo intento fallido';
           console.error(error);
         }
       };
@@ -425,55 +1011,86 @@
       const showCuration = (curation) => {
         if (!curation) {
           curationResult.innerHTML = '';
+          delete curationResult.dataset.currentUrl;
           return;
         }
-        const highlights = (curation.highlights || []).slice(0, 3);
-        const urgencyBadge = curation.urgency
-          ? `<span class="curation-urgency">${curation.urgency.toUpperCase()}</span>`
-          : '';
-        const tagHtml = (curation.tags || [])
-          .slice(0, 6)
-          .map((tag) => `<span>${tag}</span>`)
-          .join('');
+        curationResult.dataset.currentUrl = curation.url || '';
+        const siteName = curation.siteName || curation.title || curation.url || '';
         curationResult.innerHTML = `
-          ${urgencyBadge}
-          <strong>${curation.title}</strong>
-          <p>${curation.summary}</p>
-          ${highlights.map((item) => `<p>${item}</p>`).join('')}
-          <div class="curation-tags">${tagHtml}</div>
+          <strong>${escapeHtml(siteName)}</strong>
         `;
       };
 
       const renderCurations = (items) => {
-        if (!items || items.length === 0) {
+        curationsState = (items || []).map(normalizeCurationItem);
+        if (!curationsState.length) {
           curationList.innerHTML = '';
           return;
         }
 
-        curationList.innerHTML = items
+        curationList.innerHTML = curationsState
           .map((item) => {
             const headlineHtml = (item.tickerItems || [])
-              .map(
-                (headline) => `
-                  <span class="headline-chip">
-                    <span>${headline.title}</span>
-                    <button class="remove-headline" data-link="${headline.link}">×</button>
-                  </span>
-                `
-              )
+              .map((headline) => {
+                const isEditing = editingHeadlineLink && sameUrl(headline.link, editingHeadlineLink);
+                if (isEditing) {
+                  return `
+                    <div class="headline-row">
+                      <input
+                        type="text"
+                        class="headline-edit-input"
+                        value="${escapeHtml(editingHeadlineDraft || headline.title)}"
+                        data-link="${encodeDatasetValue(headline.link)}"
+                      />
+                      <div class="headline-actions">
+                        <button type="button" class="save-headline" data-link="${encodeDatasetValue(headline.link)}">✓</button>
+                        <button type="button" class="cancel-headline">•</button>
+                      </div>
+                    </div>
+                  `;
+                }
+
+                return `
+                  <div class="headline-row">
+                    <span class="headline-text">${escapeHtml(headline.title)}</span>
+                    <div class="headline-actions">
+                      <button type="button" class="edit-headline" data-link="${encodeDatasetValue(headline.link)}" data-title="${encodeDatasetValue(headline.title)}">✎</button>
+                      <button type="button" class="remove-headline" data-link="${encodeDatasetValue(headline.link)}">×</button>
+                    </div>
+                  </div>
+                `;
+              })
               .join('');
 
             return `
               <div class="curation-item">
                 <div class="curation-item-header">
                   <div>
-                    <strong>${item.title}</strong>
-                    <p>${item.url}</p>
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <p>${escapeHtml(item.url)}</p>
                   </div>
-                  <button class="remove-web" data-url="${item.url}">Quitar web</button>
+                  <button
+                    type="button"
+                    class="remove-web"
+                    data-url-encoded="${encodeDatasetValue(item.url)}"
+                    aria-label="Quitar web completa"
+                    title="Quitar web completa"
+                  >
+                    ×
+                  </button>
                 </div>
                 <div class="curation-headlines">
                   ${headlineHtml || '<span class="curation-status">Sin titulares disponibles.</span>'}
+                </div>
+                <div class="add-headline-row">
+                  <input
+                    type="text"
+                    class="add-headline-input"
+                    placeholder="Agregar titular propio"
+                    data-url="${encodeDatasetValue(item.url)}"
+                    value="${addingHeadlineUrl && sameUrl(addingHeadlineUrl, item.url) ? escapeHtml(addingHeadlineDraft) : ''}"
+                  />
+                  <button type="button" class="add-headline-btn" data-url="${encodeDatasetValue(item.url)}">+</button>
                 </div>
               </div>
             `;
@@ -482,13 +1099,72 @@
       };
 
       const refreshCurations = async () => {
+        const snapshotVersion = curationsMutationVersion;
         try {
           const response = await fetch(`/api/curations?ts=${Date.now()}`, { cache: 'no-store' });
           const payload = await response.json();
+          if (snapshotVersion !== curationsMutationVersion) {
+            return;
+          }
           renderCurations(payload.items || []);
         } catch (error) {
           console.error('No se pudo refrescar la lista de webs:', error);
         }
+      };
+
+      const upsertCuration = (curation) => {
+        curationsMutationVersion += 1;
+        const normalized = normalizeCurationItem(curation);
+        const next = curationsState.filter((item) => !sameUrl(item.url, normalized.url));
+        renderCurations([normalized, ...next]);
+      };
+
+      const purgeDismissedItemsForUrl = (targetUrl) => {
+        if (!targetUrl) {
+          return;
+        }
+        dismissedItems = new Set(
+          [...dismissedItems].filter((id) => !String(id || '').includes(targetUrl))
+        );
+        saveDismissedItems(dismissedItems);
+      };
+
+      const startHeadlineEdit = (link, title) => {
+        editingHeadlineLink = link || '';
+        editingHeadlineDraft = title || '';
+        renderCurations(curationsState);
+        setTimeout(() => {
+          const input = curationList.querySelector('.headline-edit-input');
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 0);
+      };
+
+      const cancelHeadlineEdit = () => {
+        editingHeadlineLink = '';
+        editingHeadlineDraft = '';
+        renderCurations(curationsState);
+      };
+
+      const startDismissEdit = (id, title) => {
+        editingDismissId = id || '';
+        editingDismissDraft = title || '';
+        buildTicker(latestNewsItems);
+        setTimeout(() => {
+          const input = dismissList.querySelector('.dismiss-edit-input');
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 0);
+      };
+
+      const cancelDismissEdit = () => {
+        editingDismissId = '';
+        editingDismissDraft = '';
+        buildTicker(latestNewsItems);
       };
 
       curationForm.addEventListener('submit', async (event) => {
@@ -513,9 +1189,10 @@
           }
           const { curated } = await response.json();
           showCuration(curated);
+          upsertCuration(curated);
           curationStatus.textContent = 'Web agregada a la barra.';
           curationUrl.value = '';
-          await Promise.all([refreshCurations(), refresh()]);
+          await refresh();
         } catch (error) {
           console.error('Extraccion fallida:', error);
           curationStatus.textContent = `Error: ${error.message}`;
@@ -523,10 +1200,102 @@
       });
 
       curationList.addEventListener('click', async (event) => {
+        const addButton = event.target.closest('.add-headline-btn');
+        if (addButton) {
+          const url = decodeDatasetValue(addButton.dataset.url);
+          const cleanedTitle = String(
+            addingHeadlineUrl && sameUrl(addingHeadlineUrl, url) ? addingHeadlineDraft : ''
+          ).trim();
+          if (!url || !cleanedTitle) {
+            return;
+          }
+
+          curationStatus.textContent = 'Agregando titular...';
+          try {
+            const response = await fetch('/api/curate/headline', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              cache: 'no-store',
+              body: JSON.stringify({ url, title: cleanedTitle })
+            });
+            if (!response.ok) {
+              const errorPayload = await response.json().catch(() => ({}));
+              throw new Error(errorPayload.error || 'No se pudo agregar el titular.');
+            }
+            const payload = await response.json();
+            curationStatus.textContent = 'Titular agregado.';
+            curationsMutationVersion += 1;
+            addingHeadlineUrl = '';
+            addingHeadlineDraft = '';
+            renderCurations(payload.items || []);
+            await refresh();
+          } catch (error) {
+            console.error('No se pudo agregar el titular:', error);
+            curationStatus.textContent = `Error: ${error.message}`;
+          }
+          return;
+        }
+
+        const editButton = event.target.closest('.edit-headline');
+        if (editButton) {
+          const decodedLink = decodeDatasetValue(editButton.dataset.link);
+          const currentTitle = decodeDatasetValue(editButton.dataset.title);
+          if (!decodedLink) {
+            return;
+          }
+          startHeadlineEdit(decodedLink, currentTitle || '');
+          return;
+        }
+
+        const cancelButton = event.target.closest('.cancel-headline');
+        if (cancelButton) {
+          cancelHeadlineEdit();
+          return;
+        }
+
+        const saveButton = event.target.closest('.save-headline');
+        if (saveButton) {
+          const decodedLink = decodeDatasetValue(saveButton.dataset.link);
+          const cleanedTitle = String(editingHeadlineDraft || '').trim();
+          if (!decodedLink || !cleanedTitle) {
+            cancelHeadlineEdit();
+            return;
+          }
+
+          curationStatus.textContent = 'Guardando titular...';
+          try {
+            const response = await fetch('/api/curate/headline', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              cache: 'no-store',
+              body: JSON.stringify({ link: decodedLink, title: cleanedTitle })
+            });
+            if (!response.ok) {
+              const errorPayload = await response.json().catch(() => ({}));
+              throw new Error(errorPayload.error || 'No se pudo editar el titular.');
+            }
+            const payload = await response.json();
+            curationStatus.textContent = 'Titular actualizado.';
+            curationsMutationVersion += 1;
+            editingHeadlineLink = '';
+            editingHeadlineDraft = '';
+            renderCurations(payload.items || []);
+            await refresh();
+          } catch (error) {
+            console.error('No se pudo editar el titular:', error);
+            curationStatus.textContent = `Error: ${error.message}`;
+          }
+          return;
+        }
+
         const headlineButton = event.target.closest('.remove-headline');
         if (headlineButton) {
-          const { link } = headlineButton.dataset;
-          if (!link) {
+          const decodedLink = decodeDatasetValue(headlineButton.dataset.link);
+          if (!decodedLink) {
             return;
           }
 
@@ -538,14 +1307,17 @@
                 'Content-Type': 'application/json'
               },
               cache: 'no-store',
-              body: JSON.stringify({ link })
+              body: JSON.stringify({ link: decodedLink })
             });
             if (!response.ok) {
               const errorPayload = await response.json().catch(() => ({}));
               throw new Error(errorPayload.error || 'No se pudo quitar el titular.');
             }
+            const payload = await response.json();
             curationStatus.textContent = 'Titular eliminado.';
-            await Promise.all([refreshCurations(), refresh()]);
+            curationsMutationVersion += 1;
+            renderCurations(payload.items || []);
+            await refresh();
           } catch (error) {
             console.error('No se pudo quitar el titular:', error);
             curationStatus.textContent = `Error: ${error.message}`;
@@ -558,7 +1330,8 @@
           return;
         }
 
-        const { url } = button.dataset;
+        const { urlEncoded } = button.dataset;
+        const url = decodeDatasetValue(urlEncoded);
         if (!url) {
           return;
         }
@@ -577,17 +1350,243 @@
             const errorPayload = await response.json().catch(() => ({}));
             throw new Error(errorPayload.error || 'No se pudo quitar la web.');
           }
+          const payload = await response.json();
           curationStatus.textContent = 'Web quitada de la barra.';
-          await Promise.all([refreshCurations(), refresh()]);
+          curationsMutationVersion += 1;
+          if (payload.removedUrl) {
+            purgeDismissedItemsForUrl(payload.removedUrl);
+            latestNewsItems = latestNewsItems.filter(
+              (item) => !sameUrl(item.sourceUrl, payload.removedUrl)
+            );
+            buildTicker(latestNewsItems);
+            const currentShownUrl = curationResult.dataset.currentUrl || '';
+            if (sameUrl(currentShownUrl, payload.removedUrl)) {
+              curationResult.innerHTML = '';
+              delete curationResult.dataset.currentUrl;
+            }
+          }
+          renderCurations(payload.items || []);
+          await refresh();
         } catch (error) {
           console.error('No se pudo quitar la web:', error);
           curationStatus.textContent = `Error: ${error.message}`;
         }
       });
 
+      dismissList?.addEventListener('click', async (event) => {
+        const editBadge = event.target.closest('.dismiss-edit-btn');
+        if (editBadge) {
+          event.preventDefault();
+          event.stopPropagation();
+          const button = editBadge.closest('.dismiss-list-item');
+          if (!button) {
+            return;
+          }
+          const dismissId = decodeDismissId(button.dataset.dismissId);
+          const currentItem = latestNewsItems.find((item) => getTickerItemKey(item) === dismissId);
+          startDismissEdit(dismissId, currentItem?.title || '');
+          return;
+        }
+
+        const cancelButton = event.target.closest('.cancel-dismiss-edit');
+        if (cancelButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          cancelDismissEdit();
+          return;
+        }
+
+        const saveButton = event.target.closest('.save-dismiss-edit');
+        if (saveButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          const dismissId = decodeDismissId(saveButton.dataset.dismissId);
+          const decodedLink = decodeDatasetValue(saveButton.dataset.link);
+          const isExtracted = saveButton.dataset.isExtracted === 'true';
+          const cleanedTitle = String(editingDismissDraft || '').trim();
+          if (!dismissId || !cleanedTitle) {
+            cancelDismissEdit();
+            return;
+          }
+
+          if (isExtracted && decodedLink) {
+            curationStatus.textContent = 'Guardando titular...';
+            try {
+              const response = await fetch('/api/curate/headline', {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                cache: 'no-store',
+                body: JSON.stringify({ link: decodedLink, title: cleanedTitle })
+              });
+              if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.error || 'No se pudo editar el titular.');
+              }
+              const payload = await response.json();
+              curationStatus.textContent = 'Titular actualizado.';
+              curationsMutationVersion += 1;
+              editingDismissId = '';
+              editingDismissDraft = '';
+              renderCurations(payload.items || []);
+              latestNewsItems = latestNewsItems.map((item) =>
+                item.link === decodedLink ? { ...item, title: cleanedTitle } : item
+              );
+              buildTicker(latestNewsItems);
+              await refresh();
+            } catch (error) {
+              console.error('No se pudo editar el titular desde arriba:', error);
+              curationStatus.textContent = `Error: ${error.message}`;
+            }
+            return;
+          }
+
+          titleOverrides[dismissId] = cleanedTitle;
+          saveTitleOverrides(titleOverrides);
+          latestNewsItems = latestNewsItems.map((item) =>
+            getTickerItemKey(item) === dismissId ? { ...item, title: cleanedTitle } : item
+          );
+          editingDismissId = '';
+          editingDismissDraft = '';
+          buildTicker(latestNewsItems);
+          return;
+        }
+
+        const button = event.target.closest('.dismiss-list-item');
+        if (!button) {
+          return;
+        }
+        const { dismissId, isExtracted, link } = button.dataset;
+
+        if (isExtracted === 'true') {
+          const decodedLink = decodeDatasetValue(link);
+          if (!decodedLink) {
+            return;
+          }
+
+          curationStatus.textContent = 'Quitando titular desde la lista superior...';
+          try {
+            const response = await fetch('/api/curate/headline', {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              cache: 'no-store',
+              body: JSON.stringify({ link: decodedLink })
+            });
+            if (!response.ok) {
+              const errorPayload = await response.json().catch(() => ({}));
+              throw new Error(errorPayload.error || 'No se pudo quitar el titular.');
+            }
+            const payload = await response.json();
+            curationStatus.textContent = 'Titular quitado.';
+            curationsMutationVersion += 1;
+            renderCurations(payload.items || []);
+            await refresh();
+          } catch (error) {
+            console.error('No se pudo quitar el titular desde arriba:', error);
+            curationStatus.textContent = `Error: ${error.message}`;
+          }
+          return;
+        }
+
+        toggleDismissed(dismissId);
+      });
+
+      curationList.addEventListener('input', (event) => {
+        const addInput = event.target.closest('.add-headline-input');
+        if (addInput) {
+          addingHeadlineUrl = decodeDatasetValue(addInput.dataset.url);
+          addingHeadlineDraft = addInput.value;
+          return;
+        }
+
+        const input = event.target.closest('.headline-edit-input');
+        if (!input) {
+          return;
+        }
+        editingHeadlineDraft = input.value;
+      });
+
+      dismissList?.addEventListener('input', (event) => {
+        const input = event.target.closest('.dismiss-edit-input');
+        if (!input) {
+          return;
+        }
+        editingDismissDraft = input.value;
+      });
+
+      curationList.addEventListener('keydown', async (event) => {
+        const addInput = event.target.closest('.add-headline-input');
+        if (addInput) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const addButton = addInput.parentElement?.querySelector('.add-headline-btn');
+            if (addButton) {
+              addButton.click();
+            }
+          }
+          return;
+        }
+
+        const input = event.target.closest('.headline-edit-input');
+        if (!input) {
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cancelHeadlineEdit();
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const saveButton = input.parentElement?.querySelector('.save-headline');
+          if (saveButton) {
+            saveButton.click();
+          }
+        }
+      });
+
+      dismissList?.addEventListener('keydown', (event) => {
+        const input = event.target.closest('.dismiss-edit-input');
+        if (!input) {
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cancelDismissEdit();
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const saveButton = input.parentElement?.querySelector('.save-dismiss-edit');
+          if (saveButton) {
+            saveButton.click();
+          }
+        }
+      });
+
       speedInput.addEventListener('input', () => applyDuration(Number(speedInput.value)));
       speedDown.addEventListener('click', () => changeDuration(-BUTTON_STEP));
       speedUp.addEventListener('click', () => changeDuration(BUTTON_STEP));
+      fontFamilyInput?.addEventListener('change', () =>
+        updateTickerStyle({ fontFamily: fontFamilyInput.value })
+      );
+      fontSizeInput?.addEventListener('input', () =>
+        updateTickerStyle({ fontSize: Number(fontSizeInput.value) || DEFAULT_TICKER_STYLE.fontSize })
+      );
+      fontBoldInput?.addEventListener('change', () =>
+        updateTickerStyle({ fontBold: fontBoldInput.checked })
+      );
+      textColorInput?.addEventListener('input', () =>
+        updateTickerStyle({ textColor: textColorInput.value })
+      );
+      backgroundColorInput?.addEventListener('input', () =>
+        updateTickerStyle({ backgroundColor: backgroundColorInput.value })
+      );
+      populateFontOptions();
+      applyTickerStyle();
       applyDuration(Number(speedInput.value));
 
       setInterval(refresh, 45000);
