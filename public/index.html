@@ -60,12 +60,11 @@
         color: rgba(255, 255, 255, 0.3);
       }
       .control-panel {
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        padding-top: 0.6rem;
         display: flex;
         flex-direction: column;
         gap: 0.6rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-        padding-top: 0.6rem;
-        margin-top: 0.4rem;
         font-size: 0.85rem;
         letter-spacing: 0.08em;
       }
@@ -109,6 +108,53 @@
         accent-color: #facc15;
         cursor: ew-resize;
       }
+      .curation-panel {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 0.8rem;
+        background: rgba(250, 204, 21, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .form-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .curation-panel input {
+        flex: 1;
+        padding: 0.45rem 0.65rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.03);
+        color: inherit;
+        border-radius: 3px;
+      }
+      .curation-panel button {
+        border: none;
+        background: #facc15;
+        color: #0b1220;
+        font-weight: 700;
+        padding: 0.45rem 0.9rem;
+        cursor: pointer;
+      }
+      .curation-status {
+        font-size: 0.75rem;
+        color: rgba(248, 250, 252, 0.7);
+      }
+      .curation-result {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 0.5rem;
+        font-size: 0.85rem;
+      }
+      .curation-result strong {
+        display: block;
+        color: #facc15;
+        font-size: 0.95rem;
+        margin-bottom: 0.35rem;
+      }
+      .curation-result p {
+        margin: 0 0 0.35rem;
+        color: rgba(248, 250, 252, 0.8);
+      }
       @keyframes scroll {
         from {
           transform: translateX(0);
@@ -142,8 +188,26 @@
           </div>
         </div>
         <div class="control-slider">
-          <input type="range" id="speed" min="12" max="80" value="28" step="1" />
+          <input type="range" id="speed" min="5" max="120" value="28" step="1" />
         </div>
+      </div>
+      <div class="curation-panel">
+        <form id="curation-form">
+          <label class="control-label" for="curation-url">Agregar una web</label>
+          <div class="form-row">
+            <input
+              id="curation-url"
+              type="url"
+              placeholder="https://ejemplo.com/noticia"
+              required
+            />
+            <button type="submit">Curar esta web</button>
+          </div>
+        </form>
+        <div id="curation-status" class="curation-status">
+          Pega una URL y te muestro lo más destacado.
+        </div>
+        <div id="curation-result" class="curation-result"></div>
       </div>
     </div>
     <script>
@@ -153,45 +217,14 @@
       const speedValue = document.getElementById('speedValue');
       const speedDown = document.getElementById('speedDown');
       const speedUp = document.getElementById('speedUp');
-      const MIN_DURATION = 12;
-      const MAX_DURATION = 80;
-      const BUTTON_STEP = 4;
-
-      const buildTicker = (items) => {
-        if (!items || items.length === 0) {
-          ticker.innerHTML = '<span>No hay noticias disponibles.</span>';
-          return;
-        }
-
-        const content = items
-          .map((item) => {
-            const published = new Date(item.publishedAt);
-            const timeAgo = Math.floor((Date.now() - published) / 60000);
-            return `<span><strong>${item.source}</strong>${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">·</span></span>`;
-          })
-          .join('');
-
-        ticker.innerHTML = content + content;
-        ticker.style.animation = 'none';
-        void ticker.offsetWidth;
-        ticker.style.animation = '';
-      };
-
-      const refresh = async () => {
-        try {
-          const res = await fetch('/api/news');
-          const payload = await res.json();
-          buildTicker(payload.items);
-          meta.textContent = `Actualizado: ${new Date(payload.updatedAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}`;
-        } catch (error) {
-          ticker.innerHTML = '<span>Error conectando con el backend.</span>';
-          meta.textContent = 'Último intento fallido';
-          console.error(error);
-        }
-      };
+      const curationForm = document.getElementById('curation-form');
+      const curationUrl = document.getElementById('curation-url');
+      const curationStatus = document.getElementById('curation-status');
+      const curationResult = document.getElementById('curation-result');
+      const MIN_DURATION = 5;
+      const MAX_DURATION = 120;
+      const BUTTON_STEP = 10;
+      let forcedCurations = [];
 
       const applyDuration = (value) => {
         const clamped = Math.max(MIN_DURATION, Math.min(MAX_DURATION, value));
@@ -205,6 +238,84 @@
         applyDuration(Number(speedInput.value) + delta);
       };
 
+      const buildTicker = (items) => {
+        if (!items || items.length === 0) {
+          ticker.innerHTML = '<span>No hay noticias disponibles.</span>';
+          return;
+        }
+
+        const content = items
+          .map((item) => {
+            const published = new Date(item.publishedAt || Date.now());
+            const timeAgo = Math.floor((Date.now() - published) / 60000);
+            return `<span><strong>${item.source}</strong> ${item.title} <span style="color:#a5b4fc;">(${timeAgo}m)</span> <span class="sep">·</span></span>`;
+          })
+          .join('');
+
+        ticker.innerHTML = content + content;
+        ticker.style.animation = 'none';
+        void ticker.offsetWidth;
+        ticker.style.animation = '';
+      };
+
+      const refresh = async () => {
+        try {
+          const res = await fetch('/api/news');
+          const payload = await res.json();
+          buildTicker([...forcedCurations, ...payload.items]);
+          meta.textContent = `Actualizado: ${new Date(payload.updatedAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`;
+        } catch (error) {
+          ticker.innerHTML = '<span>Error conectando con el backend.</span>';
+          meta.textContent = 'Último intento fallido';
+          console.error(error);
+        }
+      };
+
+      const showCuration = (curation) => {
+        if (!curation) {
+          curationResult.innerHTML = '';
+          return;
+        }
+        const highlights = (curation.highlights || []).slice(0, 2);
+        curationResult.innerHTML = `<strong>${curation.title}</strong><p>${curation.summary}</p>${highlights
+          .map((item) => `<p>${item}</p>`)
+          .join('')}`;
+      };
+
+      curationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const url = curationUrl.value.trim();
+        if (!url) {
+          return;
+        }
+        curationStatus.textContent = 'Curando la página…';
+        try {
+          const response = await fetch('/api/curate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+          });
+          if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({}));
+            throw new Error(errorPayload.error || 'No se pudo curar la URL.');
+          }
+          const { curated } = await response.json();
+          forcedCurations = [{ ...curated, source: curated.source || 'Curación manual', publishedAt: curated.extractedAt }, ...forcedCurations].slice(0, 3);
+          showCuration(curated);
+          curationStatus.textContent = 'Curación lista.';
+          curationUrl.value = '';
+          refresh();
+        } catch (error) {
+          console.error('Curación fallida:', error);
+          curationStatus.textContent = `Error: ${error.message}`;
+        }
+      });
+
       speedInput.addEventListener('input', () => applyDuration(Number(speedInput.value)));
       speedDown.addEventListener('click', () => changeDuration(-BUTTON_STEP));
       speedUp.addEventListener('click', () => changeDuration(BUTTON_STEP));
@@ -215,3 +326,6 @@
     </script>
   </body>
 </html>
+
+
+
