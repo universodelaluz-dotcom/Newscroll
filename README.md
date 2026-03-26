@@ -20,6 +20,8 @@ Barra de noticias lista para incrustar en OBS que combina varios RSS públicos y
 - **Nuevo feed**: agrega una entrada a `FEEDS` en `server.js` con `url` y `label`.
 - **Resumen ligero**: el backend corta el contenido a 220 caracteres y calcula un `score` por recencia y keywords. Para mejoras (sentiment, categorías), reemplaza `calculateScore`.
 - **OBS**: ajusta ancho, transparencia o velocidad modificando los estilos en `public/index.html`. Cambia `setInterval` en el script si quieres refrescar más/menos seguido (recomendado 30–60 s).
+- **Curación a demanda**: ahora existe `POST /api/curate` que acepta `{ "url": "https://..." }`, extrae título, descripciones y varios párrafos con `cheerio`, y responde con `{ curated: { title, summary, highlights, keywords } }`. Puedes usar ese endpoint para pedir un resumen instantáneo del sitio que el cliente pegue en un formulario.  
+- **Integrar Grok**: si tienes una API key de xAI, guarda `GROK_API_KEY` con tu clave (no la compartas). Puedes modificar `curatePage` para llamar a Grok Agent Tools con el texto extraído, y reemplazar `summary`/`highlights` con la respuesta del modelo; la función ya cachea hasta 20 URL para evitar repetir llamadas.
 
 ## Próximos pasos sugeridos
 

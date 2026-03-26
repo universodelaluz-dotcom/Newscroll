@@ -1,6 +1,7 @@
 const express = require('express');
 const RSSParser = require('rss-parser');
 const cors = require('cors');
+const cheerio = require('cheerio');
 const path = require('path');
 const app = express();
 const parser = new RSSParser({ timeout: 10000 });
@@ -31,6 +32,9 @@ const cache = {
   updatedAt: null,
   items: []
 };
+
+const CURATION_CACHE = new Map();
+const MAX_CURATIONS = 20;
 
 const CACHE_TTL = 45 * 1000;
 let refreshPromise = null;
@@ -73,6 +77,96 @@ const calculateScore = (article) => {
   }
 
   return score;
+};
+
+const normalizeUrl = (rawUrl) => {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.href;
+  } catch (error) {
+    return null;
+  }
+};
+
+const extractParagraphs = ($) => {
+  const paragraphs = [];
+  $('article, body').find('h1, h2, h3, p').each((_, el) => {
+    const text = $(el).text().trim().replace(/\s+/g, ' ');
+    if (text.length > 20) {
+      paragraphs.push(text);
+    }
+  });
+  if (paragraphs.length === 0) {
+    $('p').each((_, el) => {
+      const text = $(el).text().trim().replace(/\s+/g, ' ');
+      if (text.length > 40) {
+        paragraphs.push(text);
+      }
+    });
+  }
+  return paragraphs;
+};
+
+const curatePage = async (targetUrl) => {
+  const normalized = normalizeUrl(targetUrl);
+  if (!normalized) {
+    throw new Error('URL inválida');
+  }
+
+  if (CURATION_CACHE.has(normalized)) {
+    return CURATION_CACHE.get(normalized);
+  }
+
+  const response = await fetch(normalized, {
+    headers: {
+      'User-Agent': 'NewsScroll/2.0 (+https://github.com)',
+      Accept: 'text/html'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falló la descarga (${response.status})`);
+  }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const title =
+    $('meta[property="og:title"]').attr('content')?.trim() ||
+    $('title').text().trim() ||
+    normalized;
+  const description = $('meta[name="description"]').attr('content')?.trim() || '';
+  const paragraphs = extractParagraphs($);
+  const summaryHalves = paragraphs.slice(0, 3);
+  const highlights = paragraphs.slice(0, 5);
+  const summary = summaryHalves.join(' ') || description || 'No se encontró resumen automático.';
+  const keywords = Array.from(
+    new Set(
+      summary
+        .slice(0, 120)
+        .split(' ')
+        .map((word) => word.toLowerCase().replace(/[^a-záéíóúñü]/g, ''))
+        .filter((w) => w.length > 3)
+        .slice(0, 10)
+    )
+  );
+
+  const curation = {
+    url: normalized,
+    title,
+    summary,
+    highlights,
+    description,
+    keywords,
+    extractedAt: new Date().toISOString()
+  };
+
+  if (CURATION_CACHE.size >= MAX_CURATIONS) {
+    const firstKey = CURATION_CACHE.keys().next().value;
+    CURATION_CACHE.delete(firstKey);
+  }
+  CURATION_CACHE.set(normalized, curation);
+
+  return curation;
 };
 
 const refreshFeeds = async () => {
@@ -136,6 +230,7 @@ const ensureFreshCache = async () => {
 };
 
 app.use(cors());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -157,6 +252,23 @@ app.get('/api/health', async (req, res) => {
     status: 'ok',
     updatedAt: cache.updatedAt
   });
+});
+
+app.post('/api/curate', async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) {
+    return res.status(400).json({ error: 'Se requiere la URL a curar.' });
+  }
+
+  try {
+    const curated = await curatePage(url);
+    return res.json({ curated });
+  } catch (error) {
+    console.error('Curación fallida:', error.message || error);
+    return res
+      .status(500)
+      .json({ error: error.message || 'No se pudo curar la URL solicitada.' });
+  }
 });
 
 if (require.main === module) {
