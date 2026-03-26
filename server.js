@@ -75,10 +75,11 @@ const calculateScore = (article) => {
 };
 
 const refreshFeeds = async () => {
-  const articlesByLink = new Map();
+  try {
+    const articlesByLink = new Map();
 
-  await Promise.all(
-    FEEDS.map(async (feed) => {
+    await Promise.all(
+      FEEDS.map(async (feed) => {
       try {
         const parsed = await parser.parseURL(feed.url);
         (parsed.items || []).forEach((item) => {
@@ -107,6 +108,10 @@ const refreshFeeds = async () => {
 
   cache.items = items;
   cache.updatedAt = new Date().toISOString();
+  } catch (error) {
+    console.error('refreshFeeds failed', error);
+    cache.updatedAt = new Date().toISOString();
+  }
 };
 const ensureFreshCache = async () => {
   const needsRefresh =
@@ -150,12 +155,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 if (require.main === module) {
-  (async () => {
-    await refreshFeeds();
-    app.listen(PORT, () => {
-      console.log(`Ticker server listening on http://localhost:${PORT}`);
-    });
-  })();
+  app.listen(PORT, () => {
+    console.log(`Ticker server listening on http://localhost:${PORT}`);
+  });
 }
 
 module.exports = app;
